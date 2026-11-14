@@ -98,7 +98,7 @@
     ctx.restore();
     ctx.font = '700 10.5px "Hanken Grotesk", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.globalAlpha = f.a;
     ctx.fillStyle = `rgb(${s.c})`; ctx.fillText(`${s.name} · ${s.sensor}`, p[0] + 20 * k, p[1] - 2);
-    ctx.fillStyle = tone(0.8); ctx.font = '600 10px "Hanken Grotesk", system-ui, sans-serif'; ctx.fillText(`${s.res} · passes ~${S.fmtH(s.h)} local`, p[0] + 20 * k, p[1] + 11);
+    ctx.fillStyle = tone(0.8); ctx.font = '600 10px "Hanken Grotesk", system-ui, sans-serif'; ctx.fillText(`${s.res} · passes ~${S.fmtH(s.h)} local time now`, p[0] + 20 * k, p[1] + 11);
     ctx.globalAlpha = 1;
   }
 

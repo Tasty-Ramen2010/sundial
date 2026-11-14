@@ -327,3 +327,35 @@ body.on-hero .dock { opacity: 0; pointer-events: none; transform: translate(-50%
 body.sheet-open .sheet { color: #fff; }
 
 .scene.tall .col { align-self: stretch; }
+
+/* ---- clarity pass (from the confused-visitor review) ---- */
+.hero-line { position: absolute; left: 50%; transform: translateX(-50%); top: calc(100svh - 9.2rem); width: min(34rem, 100% - 2 * var(--gut)); margin: 0; text-align: center; font-size: 1.02rem; line-height: 1.5; font-weight: 500; color: var(--paper); text-shadow: 0 1px 14px rgba(0, 0, 0, 0.6); z-index: 2; max-width: none; pointer-events: none; }
+.jump { margin: 1.2rem 0 0; }
+.jump svg { width: 100%; height: auto; display: block; overflow: visible; }
+.jump .ax { stroke: var(--line); stroke-width: 1; }
+.jump .real { fill: none; stroke: var(--ok); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 6 5; }
+.jump .spliced { fill: none; stroke: var(--ember); stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 520; stroke-dashoffset: 520; }
+.jump.in .spliced { animation: jumpdraw 2.2s cubic-bezier(0.3, 0.7, 0.2, 1) 0.2s forwards; }
+.jump .mark { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 3 4; }
+.jump .t { font: 600 9.5px var(--sans); fill: var(--dim); }
+.jump .t.hi { fill: var(--ember); } .jump .t.lo { fill: var(--ok); }
+.jump figcaption { font-size: 0.78rem; color: var(--dim); margin-top: 0.3rem; }
+@keyframes jumpdraw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .jump .spliced { stroke-dashoffset: 0; } }
+.dock a { font-size: 0.78rem; }
+.explore-hint { font-size: 0.95rem; color: #3e3228; }
+.tiny, .card .tiny { font-size: 0.86rem; color: var(--bone); opacity: 0.82; line-height: 1.55; }
+.gcard .note { font-size: 0.86rem; opacity: 0.85; }
+.sheet-foot { font-size: 0.82rem; opacity: 0.8; }
+body:not(.kbd) .sheet-back:focus, body:not(.kbd) .sheet-back:focus-visible { outline: none; }
+.sheet-bar { background: rgba(8, 6, 5, 0.78); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+#title.docked a { background: rgba(10, 9, 8, 0.6); padding: 0.18em 0.5em; border-radius: 99px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+body.ink-title:not(.sheet-open) #title.docked a { background: rgba(243, 234, 217, 0.82); }
+@media (max-width: 860px) {
+  .scene { padding-bottom: 7.5rem; }
+  .hero-line { top: calc(100svh - 10.5rem); font-size: 0.95rem; }
+}
+
+.sheet-hl { max-width: 40rem; }
+.sheet-cond { opacity: 0.9; }
+.tod-marks { min-height: 3.7rem; }

@@ -9,7 +9,7 @@
   const MONF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const fmt = (n) => n == null ? '–' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : Math.round(n) + '';
-  const TIER = { measured: ['Calibrated on this country', 'Enough data here to measure the correction directly.'], blended: ['Partly borrowed calibration', 'Fewer detections here, so the correction is blended with the pooled value from similar countries.'], borrowed: ['Borrowed calibration', 'Very few detections here, so the correction uses the pooled value from other countries. Treat the details with care.'] };
+  const TIER = { measured: ['Measured from this country\'s own data', 'Enough detections here to calculate the correction directly.'], blended: ['Partly borrowed calibration', 'Fewer detections here, so the correction is blended with the pooled value from similar countries.'], borrowed: ['Borrowed calibration', 'Very few detections here, so the correction uses the pooled value from other countries. Treat the details with care.'] };
   const p0 = (v) => (v == null ? 'n/a' : v.toFixed(0) + '%');
   const ymLabel = (ym) => `${MON[ym % 100 - 1]} ${Math.floor(ym / 100)}`;
   const nowUTC = () => { const d = new Date(); return d.getUTCHours() + d.getUTCMinutes() / 60; };
@@ -135,6 +135,9 @@
   }
 
   /* ============ scroll ============ */
+  addEventListener('keydown', (e) => { if (e.key === 'Tab') document.body.classList.add('kbd'); });
+  addEventListener('pointerdown', () => document.body.classList.remove('kbd'));
+  const jumpEl = $('#jump'); if (jumpEl && 'IntersectionObserver' in window) new IntersectionObserver((es, o) => es.forEach((en) => { if (en.isIntersecting) { jumpEl.classList.add('in'); o.disconnect(); } }), { threshold: 0.5 }).observe(jumpEl); else if (jumpEl) jumpEl.classList.add('in');
   const scenes = $$('.scene');
   const dockMap = { hero: 'explore', explore: 'explore', cameras: 'cameras', clock: 'cameras', drift: 'cameras', swath: 'swath', evidence: 'evidence' };
   const closing = $('#why'), intro = $('#intro');
@@ -226,10 +229,10 @@
     const all = Object.values(DATA.score).map((r) => ({ id: r.country, name: DATA.byId[r.country].name, gap: r['V2_terra_drift.gap_closed_pct'], err: r['V1_holdout.median_abs_err_pct'] }));
     const rows = all.filter((r) => r.gap != null).sort((a, b) => b.gap - a.gap), skipped = all.filter((r) => r.gap == null);
     const better = rows.filter((r) => r.gap > 0), worse = rows.filter((r) => r.gap <= 0);
-    $('#ev-title').textContent = `It shrank Terra's fake trend in ${better.length} of ${rows.length} tested countries.`;
+    $('#ev-title').textContent = `It shrank Terra's false trend in ${better.length} of ${rows.length} tested countries.`;
     $('#board').innerHTML = rows.map((r) => {
       const w = r.gap <= 0, wd = clamp(Math.abs(r.gap), 0, 100);
-      return `<li class="${w ? 'worse' : ''}"><span>${r.name}</span><span class="b-bar" role="img" aria-label="${Math.round(r.gap)} percent of the fake trend removed"><i style="width:${wd}%"></i></span><span class="b-num">${Math.round(r.gap)}%</span><span class="b-tag">${w ? 'Worse' : 'Better'}</span></li>`;
+      return `<li class="${w ? 'worse' : ''}"><span>${r.name}</span><span class="b-bar" role="img" aria-label="${Math.round(r.gap)} percent of the false trend removed"><i style="width:${wd}%"></i></span><span class="b-num">${Math.round(r.gap)}%</span><span class="b-tag">${w ? 'Worse' : 'Better'}</span></li>`;
     }).join('');
     const errs = rows.map((r) => r.err).filter((e) => e != null).sort((a, b) => a - b);
     const tiers = {}; DATA.meta.countries.forEach((c) => { tiers[c.tier] = (tiers[c.tier] || 0) + 1; });
@@ -313,7 +316,7 @@
     const v = G.heatAt(e.clientX, e.clientY);
     if (v == null || v < 0.6) { heatTarget = 0; hideTip(); return; }
     heatTarget = clamp(Math.log1p(v) / Math.log1p(sheetCtx.vmax || 1), 0, 1);
-    gtip.innerHTML = `Typical ${MONF[sheetCtx.month - 1]}<small>about ${fmt(v)} fires a month in this patch</small>`;
+    gtip.innerHTML = `Typical ${MONF[sheetCtx.month - 1]}<small>about ${fmt(v)} fires a month in this 25 km square</small>`;
     gtip.style.left = e.clientX + 'px'; gtip.style.top = e.clientY + 'px'; gtip.hidden = false;
   });
   scroller.addEventListener('pointerleave', () => { heatTarget = 0; hideTip(); });
@@ -349,8 +352,10 @@
     $('#sheet-name').textContent = cname(sh.c);
     const tr = TIER[sh.c.tier]; const te = $('#tier'); te.hidden = !tr; if (tr) { te.className = 'tier ' + sh.c.tier; te.textContent = tr[0]; te.title = tr[1]; }
     $('#sheet-num').textContent = Math.round(v).toLocaleString('en-US');
-    $('#sheet-cond').textContent = z >= 2 ? `Unusually high for ${MONF[mo - 1]}` : z <= -2 ? `Unusually low for ${MONF[mo - 1]}` : `Typical for ${MONF[mo - 1]}`;
-    $('#sheet-hl').textContent = `Fire detections in ${ymLabel(ym)} · peak ${ymLabel(s.summary.peak_month)} (${fmt(s.summary.peak_value)})`;
+    const verdict = z >= 2 ? `Unusually high for ${MONF[mo - 1]}` : z <= -2 ? `Unusually low for ${MONF[mo - 1]}` : `Typical for ${MONF[mo - 1]}`;
+    const same = s.harm.filter((x, j) => s.months[j] % 100 === mo && j !== i && x != null), typ = same.length ? same.reduce((p, q) => p + q, 0) / same.length : null;
+    $('#sheet-cond').textContent = `fire detections in ${ymLabel(ym)}`;
+    $('#sheet-hl').textContent = `${verdict}${typ != null ? `: an average ${MONF[mo - 1]} has ${fmt(typ)}` : ''}. Busiest month on record: ${ymLabel(s.summary.peak_month)} (${fmt(s.summary.peak_value)}). Counts are VIIRS-equivalent.`;
     $('#m-label').textContent = ymLabel(ym);
     $('#bar-name').textContent = cname(sh.c); $('#bar-val').textContent = Math.round(v).toLocaleString('en-US');
     $('#m-prev').disabled = i === 0; $('#m-next').disabled = i === s.months.length - 1;
@@ -381,12 +386,12 @@
     cardsEl.innerHTML = `
 <section class="gcard span2"><h3 class="gh">${ICON.clock} When in the day<span class="gr" id="pass-sum"></span></h3>
   <div class="dayrow"><p id="day-line"></p><button type="button" id="day-play">▶ Play the day</button></div>
-  <div class="tod"><div class="tod-top"><span class="tod-lab">Local time · drag to change</span><output class="tod-out" id="tod-out" for="tod"></output></div><div class="tod-marks" id="tod-marks"></div><input type="range" id="tod" min="0" max="23.99" step="0.02" value="12" aria-label="Local time of day"><div class="tod-ticks" aria-hidden="true"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
+  <div class="tod"><div class="tod-top"><span class="tod-lab">Drag to see when the satellites pass over this country</span><output class="tod-out" id="tod-out" for="tod"></output></div><div class="tod-marks" id="tod-marks"></div><input type="range" id="tod" min="0" max="23.99" step="0.02" value="12" aria-label="Local time of day"><div class="tod-ticks" aria-hidden="true"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
   <div class="hours" id="hours">${hours}</div>
   <p class="note">The bars are a schematic daily fire rhythm. The markers show when each satellite passed this country in the selected month. Tap an hour to see the sky and the night side at that time.</p></section>
 <section class="gcard"><h3 class="gh">${ICON.chart} Year by year</h3><div class="yrows" id="yrows">${yrows}</div><p class="note">Each bar spans the lowest to highest month. The dot is the average month.</p></section>
 <section class="gcard"><h3 class="gh">${ICON.sat} Orbit drift</h3><div id="orb"></div>
-  <div class="keys"><span><i style="background:#ffd27a"></i>Terra</span><span><i style="background:#ff8a4a"></i>Aqua</span><span><i style="background:#a9cdff"></i>Suomi NPP</span></div>
+  <div class="keys"><span><i style="background:#ffd27a"></i>Terra</span><span><i style="background:#ff8a4a"></i>Aqua</span><span><i style="background:#a9cdff"></i>VIIRS</span></div>
   <p class="note">Local time of each satellite's daytime pass over ${cname(sh.c)}. Terra slides earlier and Aqua later, from about 2020.</p></section>
 <section class="gcard span2"><h3 class="gh">${ICON.cal} Burning calendar<span class="gr">tap a month</span></h3><div class="cal-scroll"><div class="cal" id="cal" role="grid" aria-label="Burning calendar"></div></div>
   <p class="note">Harmonized detections per month in VIIRS units. ▲ unusually high · ▼ unusually low, against the same month in other years.</p></section>
@@ -396,7 +401,7 @@
   <p class="note" id="ba-note"></p></section>
 <section class="gcard"><h3 class="gh">${ICON.warn} Unusual months</h3><ol class="anoms" id="anoms">${anoms.length ? anoms.map((r) => `<li><button type="button" data-i="${r.i}"><span class="k ${r.z > 0 ? 'up' : 'dn'}">${r.z > 0 ? '▲ High' : '▼ Low'}</span> ${ymLabel(r.m)}<em>${fmt(r.v)} · z ${r.z.toFixed(1)}</em></button></li>`).join('') : '<li class="note">No month passes the |z| ≥ 2 test here.</li>'}</ol></section>
 <section class="gcard"><h3 class="gh">${ICON.check} Does it work here?</h3>
-  ${gap == null ? `<p>Not enough clean data here to test the correction.</p>${TIER[sh.c.tier] ? `<p class="note"><b>${TIER[sh.c.tier][0]}.</b> ${TIER[sh.c.tier][1]}</p>` : ''}` : `<div class="score"><div><div class="n ${worse ? 'bad' : ''}">${Math.round(gap)}%</div><div class="l">of Terra's fake trend removed</div></div><div><div class="n">${sc['V1_holdout.median_abs_err_pct'] == null ? 'n/a' : sc['V1_holdout.median_abs_err_pct'].toFixed(1) + '%'}</div><div class="l">median yearly error on held-out years</div></div></div>
+  ${gap == null ? `<p>Not enough clean data here to test the correction.</p>${TIER[sh.c.tier] ? `<p class="note"><b>${TIER[sh.c.tier][0]}.</b> ${TIER[sh.c.tier][1]}</p>` : ''}` : `<div class="score"><div><div class="n ${worse ? 'bad' : ''}">${Math.round(gap)}%</div><div class="l">of Terra's false trend removed</div></div><div><div class="n">${sc['V1_holdout.median_abs_err_pct'] == null ? 'n/a' : sc['V1_holdout.median_abs_err_pct'].toFixed(1) + '%'}</div><div class="l">typical yearly error on years we hid from the fit</div></div></div>
   <p>Terra alone changed by <b>${p0(sc['V2_terra_drift.raw_terra_change_pct'])}</b> after the drift began while VIIRS changed by <b>${p0(sc['V2_terra_drift.viirs_change_pct'])}</b>. Corrected, Terra changes by <b>${p0(sc['V2_terra_drift.corrected_terra_change_pct'])}</b>.</p>
   ${TIER[sh.c.tier] ? `<p class="note"><b>${TIER[sh.c.tier][0]}.</b> ${TIER[sh.c.tier][1]}</p>` : ''}
   ${worse ? `<p class="note"><b>Here the fix made things worse.</b> ${sh.id === 'India' ? 'Punjab crop burning moved later in the day, which breaks the method’s assumption.' : 'We show this on purpose.'}</p>` : ''}`}</section>
@@ -550,7 +555,7 @@
     if (!reduce) { const t0 = performance.now(); (function unmelt(now) { const t = clamp((now - t0) / 2200, 0, 1); baseYear = 2050 - 67 * (1 - Math.pow(1 - t, 3)); placeTitle(); if (t < 1) requestAnimationFrame(unmelt); })(t0); }
     if (!d) { $('.explore-hint').textContent = 'The data files did not load. Open this page over http(s), not as a local file.'; return; }
     initEvidence();
-    $('.explore-hint').innerHTML = `<span aria-hidden="true">⟲</span> Drag to look around. Tap a glowing country. ${DATA.meta.countries.length} countries.`;
+    $('.explore-hint').innerHTML = `<span aria-hidden="true">⟲</span> Drag to look around. Tap a glowing country (brighter = more fire). ${DATA.meta.countries.length} countries.`;
     await buildPlaces();
     const m = /place=([A-Za-z_]+)(?:&m=(\d{6}))?/.exec(location.hash);
     if (m && DATA.byId[m[1]]) { const s = await DATA.loadSeries(m[1]); const idx = m[2] ? s.months.indexOf(+m[2]) : -1; openPlace(m[1], idx >= 0 ? { idx } : {}); }

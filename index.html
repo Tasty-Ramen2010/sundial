@@ -40,14 +40,15 @@
 
 <!-- 00: the art -->
 <section id="hero" class="scene hero">
+  <p class="hero-line">Satellites count fires differently depending on the time of day. We corrected for that, so 25 years of fire can finally be compared.</p>
   <a class="scroll-cue" href="#intro">Scroll <span aria-hidden="true">↓</span></a>
   <div class="chin" aria-hidden="true"></div>
 </section>
 
 <section id="intro" class="intro">
   <div class="intro-in">
-    <p class="intro-kicker">NASA Space Apps Challenge 2026 · Harmonization of MODIS and VIIRS Hot Spots</p>
-    <p class="intro-lede">Satellites count more fires in the afternoon than the morning, and two of them have spent five years drifting through the day. We put <b>25 years of NASA fire detections</b> on one fair scale.</p>
+    <p class="intro-kicker">NASA Space Apps Challenge 2026 · Making two fire-watching satellite families agree (MODIS and VIIRS)</p>
+    <p class="intro-lede">Satellites count more fires in the afternoon than the morning, and two of them have spent five years drifting through the day. We rebuilt <b>25 years of NASA fire detections</b> so every year can be compared with every other, like for like.</p>
     <p class="chin-actions">
       <a class="btn" href="#explore">Look around the globe</a>
       <a class="btn ghost" href="#cameras">How it works</a>
@@ -71,6 +72,19 @@
         <div><dt>MODIS</dt><dd><span class="big">1 km</span> pixels, since 2000</dd></div>
         <div><dt class="v">VIIRS</dt><dd><span class="big">375 m</span> pixels, since 2012</dd></div>
       </dl>
+      <figure class="jump" id="jump" aria-label="Chart: spliced record jumps up in 2012 when VIIRS starts; the true level stays flat">
+        <svg viewBox="0 0 320 130" role="img" aria-hidden="true">
+          <line x1="14" y1="112" x2="310" y2="112" class="ax"/>
+          <path class="real" d="M14 78 L60 74 L106 80 L152 76 L198 79 L244 75 L304 77"/>
+          <path class="spliced" d="M14 78 L60 74 L106 80 L152 76 L152 40 L198 43 L244 39 L304 41"/>
+          <line x1="152" y1="20" x2="152" y2="112" class="mark"/>
+          <text x="156" y="16" class="t">2012: VIIRS joins</text>
+          <text x="20" y="96" class="t d">MODIS alone</text>
+          <text x="214" y="30" class="t hi">spliced: looks like more fire</text>
+          <text x="196" y="96" class="t lo">actual burning: unchanged</text>
+        </svg>
+        <figcaption>Made-up numbers, to show the shape of the problem.</figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -146,8 +160,8 @@
   <div class="col wide">
     <div class="card">
       <p class="eyebrow"><b>05</b> Evidence · Does the fix work?</p>
-      <h2 id="ev-title">We test it on years the method never saw.</h2>
-      <p>Fit the clock correction on data from before 2020 only. Correct Terra's 2021 to 2025 counts. Check against VIIRS, which never drifted. "Gap closed" is the share of Terra's fake trend the correction removed: 100% is perfect, 0% did nothing, below 0% made it worse.</p>
+      <h2 id="ev-title">We test it on years the method never got to see.</h2>
+      <p>Fit the clock correction on data from before 2020 only. Correct Terra's 2021 to 2025 counts. Check against VIIRS, which never drifted. Terra drifted, which creates a false downward trend. "Gap closed" is the share of that false trend our correction removed: 100% is perfect, 0% did nothing, below 0% made it worse.</p>
       <ul class="board" id="board"></ul>
       <p class="tiny" id="ev-note"></p>
     </div>
