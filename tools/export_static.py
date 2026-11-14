@@ -14,8 +14,19 @@ from backend import main as B  # noqa: E402
 
 out = Path(sys.argv[1]); (out / "series").mkdir(parents=True, exist_ok=True)
 
+def clean(o):
+    """JSON has no NaN/Infinity: turn them into null so browsers can parse the files."""
+    if isinstance(o, float):
+        return o if math.isfinite(o) else None
+    if isinstance(o, dict):
+        return {k: clean(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [clean(v) for v in o]
+    return o
+
+
 def dump(path, obj):
-    path.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False))
+    path.write_text(json.dumps(clean(obj), separators=(",", ":"), ensure_ascii=False))
     return path.stat().st_size
 
 # countries: id, name, bbox, centroid from the geojson
@@ -32,13 +43,19 @@ for f in gj["features"]:
     cent[pid] = centroid(f)
 print("geojson props sample:", gj["features"][0]["properties"])
 
-meta = {"first_month": B.META["first_month"], "last_month": B.META["last_month"], "countries": []}
-for c in B.META["countries"]:
+cal_all = json.loads((B.DATA / "calibration.json").read_text())
+meta = {"first_month": B.META["first_month"], "last_month": B.META["last_month"], "countries": [],
+        "excluded": len(cal_all.get("excluded", {})), "thresholds": cal_all.get("thresholds", {})}
+SHOWN = [c for c in B.META["countries"] if c.get("bbox")]   # a country with no border cannot be drawn on the globe
+print("skipped (no border):", [c["id"] for c in B.META["countries"] if not c.get("bbox")])
+for c in SHOWN:
     cx = cent.get(c["id"]) or cent.get(c["name"]) or [(c["bbox"][0] + c["bbox"][2]) / 2, (c["bbox"][1] + c["bbox"][3]) / 2]
-    meta["countries"].append({"id": c["id"], "name": c["name"], "bbox": c["bbox"], "centroid": cx})
+    q = (B.CAL.get(c["id"], {}) or {}).get("quality", {})
+    meta["countries"].append({"id": c["id"], "name": c["name"], "bbox": c["bbox"], "centroid": cx,
+                              "tier": q.get("tier"), "calib_n": q.get("calibration_detections")})
 tot = dump(out / "meta.json", meta)
 
-for c in B.META["countries"]:
+for c in SHOWN:
     s = B.series(f"country:{c['id']}")
     tot += dump(out / "series" / f"{c['id']}.json", s)
 

@@ -189,13 +189,30 @@
   function drawCountries() {
     const DATA = window.DATA;
     if (V.ctry < 0.02 && !selected) return;
+    const lam = V.lon * Math.PI / 180, phi = V.lat * Math.PI / 180;
+    const vx = Math.cos(phi) * Math.cos(lam), vy = Math.cos(phi) * Math.sin(lam), vz = Math.sin(phi);
+    // everything on the visible side goes into ONE path (fast with 180+ countries); hovered and selected are drawn on top
+    ctx.beginPath();
+    let any = false;
     for (const id in DATA.features) {
-      const f = DATA.features[id];
-      const isSel = id === selected, isHov = id === hover;
-      const a = isSel ? 1 : V.ctry;
+      if (id === selected || id === hover) continue;
+      const c = DATA.byId[id]; if (!c) continue;
+      const la = c.centroid[1] * Math.PI / 180, lo = c.centroid[0] * Math.PI / 180;
+      const dot = Math.cos(la) * Math.cos(lo) * vx + Math.cos(la) * Math.sin(lo) * vy + Math.sin(la) * vz;
+      const half = Math.min(3.1, Math.max(c.bbox[2] - c.bbox[0], c.bbox[3] - c.bbox[1]) * Math.PI / 360);
+      if (Math.acos(Math.max(-1, Math.min(1, dot))) > Math.PI / 2 + half) continue;
+      path(DATA.features[id]); any = true;
+    }
+    if (any && V.ctry > 0.02) {
+      ctx.fillStyle = `rgba(255,130,50,${0.07 * V.ctry})`; ctx.fill();
+      ctx.strokeStyle = `rgba(255,170,90,${0.4 * V.ctry})`; ctx.lineWidth = 0.9; ctx.stroke();
+    }
+    for (const id of [hover, selected]) {
+      if (!id || !DATA.features[id]) continue;
+      const f = DATA.features[id], isSel = id === selected, a = isSel ? 1 : V.ctry;
       if (a < 0.02) continue;
       ctx.beginPath(); path(f);
-      ctx.fillStyle = `rgba(255,130,50,${(isSel ? 0.05 : isHov ? 0.2 : 0.07) * a})`; ctx.fill();
+      ctx.fillStyle = `rgba(255,130,50,${(isSel ? 0.05 : 0.2) * a})`; ctx.fill();
       if (isSel && flagTex && V.glass > 0.25) {
         const bb = path.bounds(f), bw = bb[1][0] - bb[0][0], bh = bb[1][1] - bb[0][1];
         if (bw > 2 && bh > 2) {
@@ -206,7 +223,8 @@
           ctx.restore();
         }
       }
-      ctx.strokeStyle = `rgba(255,170,90,${(isSel ? 0.9 : isHov ? 0.95 : 0.4) * a})`; ctx.lineWidth = isSel ? 1.6 : isHov ? 1.8 : 0.9; ctx.stroke();
+      ctx.beginPath(); path(f);
+      ctx.strokeStyle = `rgba(255,170,90,${(isSel ? 0.9 : 0.95) * a})`; ctx.lineWidth = isSel ? 1.6 : 1.8; ctx.stroke();
     }
   }
 

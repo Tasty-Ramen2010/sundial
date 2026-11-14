@@ -9,6 +9,7 @@
   const MONF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const fmt = (n) => n == null ? '–' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : Math.round(n) + '';
+  const TIER = { measured: ['Calibrated on this country', 'Enough data here to measure the correction directly.'], blended: ['Partly borrowed calibration', 'Fewer detections here, so the correction is blended with the pooled value from similar countries.'], borrowed: ['Borrowed calibration', 'Very few detections here, so the correction uses the pooled value from other countries. Treat the details with care.'] };
   const p0 = (v) => (v == null ? 'n/a' : v.toFixed(0) + '%');
   const ymLabel = (ym) => `${MON[ym % 100 - 1]} ${Math.floor(ym / 100)}`;
   const nowUTC = () => { const d = new Date(); return d.getUTCHours() + d.getUTCMinutes() / 60; };
@@ -226,7 +227,8 @@
       return `<li class="${w ? 'worse' : ''}"><span>${r.name}</span><span class="b-bar" role="img" aria-label="${Math.round(r.gap)} percent of the fake trend removed"><i style="width:${wd}%"></i></span><span class="b-num">${Math.round(r.gap)}%</span><span class="b-tag">${w ? 'Worse' : 'Better'}</span></li>`;
     }).join('');
     const errs = rows.map((r) => r.err).filter((e) => e != null).sort((a, b) => a - b);
-    $('#ev-note').textContent = `${skipped.length ? 'Not enough clean data to test ' + skipped.map((r) => r.name).join(', ') + '. ' : ''}${worse.length ? 'It made ' + worse.map((r) => r.name).join(' and ') + ' worse, and we show that on purpose. ' : ''}${DATA.score.India && DATA.score.India['V2_terra_drift.gap_closed_pct'] <= 0 ? 'In India the burning schedule itself changed (Punjab crop burning moved later in the day), which breaks the method’s assumption. ' : ''}Converting MODIS to VIIRS units on held-out years (2016 to 2019) is off by a median of ${errs[0].toFixed(1)}% to ${errs[errs.length - 1].toFixed(1)}% per year, depending on the country.`;
+    const tiers = {}; DATA.meta.countries.forEach((c) => { tiers[c.tier] = (tiers[c.tier] || 0) + 1; });
+    $('#ev-note').textContent = `${skipped.length ? 'Not enough clean data to test ' + skipped.length + ' smaller countries. ' : ''}Calibration adapts to the data: ${tiers.measured || 0} countries are calibrated on their own, ${tiers.blended || 0} are blended with the pooled value, ${tiers.borrowed || 0} borrow it. Another ${DATA.meta.excluded || 0} places had too little fire to include. ${worse.length ? 'It made ' + worse.map((r) => r.name).join(' and ') + ' worse, and we show that on purpose. ' : ''}${DATA.score.India && DATA.score.India['V2_terra_drift.gap_closed_pct'] <= 0 ? 'In India the burning schedule itself changed (Punjab crop burning moved later in the day), which breaks the method’s assumption. ' : ''}Converting MODIS to VIIRS units on held-out years (2016 to 2019) is off by a median of ${errs[0].toFixed(1)}% to ${errs[errs.length - 1].toFixed(1)}% per year, depending on the country.`;
     const a = DATA.score.Angola;
     if (a) $('#drift-angola').innerHTML = `<b>Real result, Angola:</b> after the drift began, Terra alone shows <b>${a['V2_terra_drift.raw_terra_change_pct'].toFixed(0)}%</b> while VIIRS shows <b>${a['V2_terra_drift.viirs_change_pct'].toFixed(0)}%</b>. Our correction brings Terra to <b>${a['V2_terra_drift.corrected_terra_change_pct'] > 0 ? '+' : ''}${a['V2_terra_drift.corrected_terra_change_pct'].toFixed(0)}%</b>. The decline is the satellite waking up earlier, not less fire.`;
     FOCI.evidence.pins = ['Mozambique', 'India', 'Kazakhstan', 'Australia'].map((id) => { const c = DATA.byId[id], r = DATA.score[id]; return { lon: c.centroid[0], lat: c.centroid[1], t: `${c.name} ${Math.round(r['V2_terra_drift.gap_closed_pct'])}%` }; });
@@ -237,7 +239,7 @@
     const ids = DATA.meta.countries.map((c) => c.id);
     $('#places-list').innerHTML = ids.map((id) => `<li><button type="button" data-id="${id}">${DATA.byId[id].name}</button></li>`).join('');
     $('#places-list').addEventListener('click', (e) => { const b = e.target.closest('button[data-id]'); if (b) openPlace(b.dataset.id); });
-    $('#switch').innerHTML = ids.map((id) => `<option value="${id}">${DATA.byId[id].name}</option>`).join('');
+    $('#switch').innerHTML = ids.slice().sort((a, b) => DATA.byId[a].name.localeCompare(DATA.byId[b].name)).map((id) => `<option value="${id}">${DATA.byId[id].name}</option>`).join('');
     $('#switch').addEventListener('change', (e) => openPlace(e.target.value));
   }
 
@@ -328,6 +330,7 @@
     sh.idx = i;
     const s = sh.s, ym = s.months[i], mo = ym % 100, v = s.harm[i], z = s.z[i];
     $('#sheet-name').textContent = cname(sh.c);
+    const tr = TIER[sh.c.tier]; const te = $('#tier'); te.hidden = !tr; if (tr) { te.className = 'tier ' + sh.c.tier; te.textContent = tr[0]; te.title = tr[1]; }
     $('#sheet-num').textContent = Math.round(v).toLocaleString('en-US');
     $('#sheet-cond').textContent = z >= 2 ? `Unusually high for ${MONF[mo - 1]}` : z <= -2 ? `Unusually low for ${MONF[mo - 1]}` : `Typical for ${MONF[mo - 1]}`;
     $('#sheet-hl').textContent = `Fire detections in ${ymLabel(ym)} · peak ${ymLabel(s.summary.peak_month)} (${fmt(s.summary.peak_value)})`;
@@ -376,8 +379,9 @@
   <p class="note" id="ba-note"></p></section>
 <section class="gcard"><h3 class="gh">${ICON.warn} Unusual months</h3><ol class="anoms" id="anoms">${anoms.length ? anoms.map((r) => `<li><button type="button" data-i="${r.i}"><span class="k ${r.z > 0 ? 'up' : 'dn'}">${r.z > 0 ? '▲ High' : '▼ Low'}</span> ${ymLabel(r.m)}<em>${fmt(r.v)} · z ${r.z.toFixed(1)}</em></button></li>`).join('') : '<li class="note">No month passes the |z| ≥ 2 test here.</li>'}</ol></section>
 <section class="gcard"><h3 class="gh">${ICON.check} Does it work here?</h3>
-  ${gap == null ? '<p>No validation for this area.</p>' : `<div class="score"><div><div class="n ${worse ? 'bad' : ''}">${Math.round(gap)}%</div><div class="l">of Terra's fake trend removed</div></div><div><div class="n">${sc['V1_holdout.median_abs_err_pct'] == null ? 'n/a' : sc['V1_holdout.median_abs_err_pct'].toFixed(1) + '%'}</div><div class="l">median yearly error on held-out years</div></div></div>
+  ${gap == null ? `<p>Not enough clean data here to test the correction.</p>${TIER[sh.c.tier] ? `<p class="note"><b>${TIER[sh.c.tier][0]}.</b> ${TIER[sh.c.tier][1]}</p>` : ''}` : `<div class="score"><div><div class="n ${worse ? 'bad' : ''}">${Math.round(gap)}%</div><div class="l">of Terra's fake trend removed</div></div><div><div class="n">${sc['V1_holdout.median_abs_err_pct'] == null ? 'n/a' : sc['V1_holdout.median_abs_err_pct'].toFixed(1) + '%'}</div><div class="l">median yearly error on held-out years</div></div></div>
   <p>Terra alone changed by <b>${p0(sc['V2_terra_drift.raw_terra_change_pct'])}</b> after the drift began while VIIRS changed by <b>${p0(sc['V2_terra_drift.viirs_change_pct'])}</b>. Corrected, Terra changes by <b>${p0(sc['V2_terra_drift.corrected_terra_change_pct'])}</b>.</p>
+  ${TIER[sh.c.tier] ? `<p class="note"><b>${TIER[sh.c.tier][0]}.</b> ${TIER[sh.c.tier][1]}</p>` : ''}
   ${worse ? `<p class="note"><b>Here the fix made things worse.</b> ${sh.id === 'India' ? 'Punjab crop burning moved later in the day, which breaks the method’s assumption.' : 'We show this on purpose.'}</p>` : ''}`}</section>
 <section class="gcard span2"><h3 class="gh">${ICON.down} Download</h3><div class="dl"><button type="button" class="btn" id="dl-csv">Monthly table (CSV)</button><a class="btn ghost" href="https://firms.modaps.eosdis.nasa.gov/download/" target="_blank" rel="noopener">NASA FIRMS raw archive ↗</a><button type="button" class="btn ghost" id="dl-link">Copy link to this view</button></div>
   <p class="note">One row per month: harmonized count with 95% band, anomaly score, raw counts per satellite, uncorrected and drift-corrected MODIS, pass times and fire power. Hotspot-level files come from the team's server app.</p><p class="toast" id="toast" role="status" aria-live="polite"></p></section>`;
@@ -529,6 +533,7 @@
     if (!reduce) { const t0 = performance.now(); (function unmelt(now) { const t = clamp((now - t0) / 2200, 0, 1); baseYear = 2050 - 67 * (1 - Math.pow(1 - t, 3)); placeTitle(); if (t < 1) requestAnimationFrame(unmelt); })(t0); }
     if (!d) { $('.explore-hint').textContent = 'The data files did not load. Open this page over http(s), not as a local file.'; return; }
     initEvidence();
+    $('.explore-hint').innerHTML = `<span aria-hidden="true">⟲</span> Drag to look around. Tap a glowing country. ${DATA.meta.countries.length} countries.`;
     await buildPlaces();
     const m = /place=([A-Za-z_]+)(?:&m=(\d{6}))?/.exec(location.hash);
     if (m && DATA.byId[m[1]]) { const s = await DATA.loadSeries(m[1]); const idx = m[2] ? s.months.indexOf(+m[2]) : -1; openPlace(m[1], idx >= 0 ? { idx } : {}); }

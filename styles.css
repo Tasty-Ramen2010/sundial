@@ -275,6 +275,8 @@ body.loading .dock, body.sheet-open .dock { opacity: 0; pointer-events: none; tr
 body.sheet-open main, body.sheet-open .closing { opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0s 0.3s; }
 .dock { transition: opacity 0.3s, transform 0.4s; }
 body.on-hero .dock { opacity: 0; pointer-events: none; transform: translate(-50%, 140%); }
+.tier { display: inline-block; margin: 0.35rem auto 0; padding: 0.22rem 0.7rem; border-radius: 99px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid var(--glassLine); background: rgba(0, 0, 0, 0.25); max-width: none; text-shadow: none; }
+.tier.measured { color: #b6f0c2; } .tier.blended { color: #ffd27a; } .tier.borrowed { color: #ffb0a3; }
 .switch { display: inline-block; margin: 0.5rem 0 0.2rem; position: relative; }
 .switch select { appearance: none; -webkit-appearance: none; background: rgba(0, 0, 0, 0.28); color: #fff; border: 1px solid var(--glassLine); border-radius: 99px; padding: 0.4rem 2rem 0.4rem 1rem; font: 600 0.8rem var(--sans); cursor: pointer; width: auto; backdrop-filter: blur(14px); }
 .switch::after { content: ""; position: absolute; right: 0.9rem; top: 50%; width: 6px; height: 6px; border-right: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-70%) rotate(45deg); pointer-events: none; }
@@ -294,3 +296,4 @@ body.on-hero .dock { opacity: 0; pointer-events: none; transform: translate(-50%
 #tod::-webkit-slider-thumb { width: 28px; height: 28px; margin-top: -7px; border: 3px solid rgba(0, 0, 0, 0.35); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
 #tod::-moz-range-thumb { width: 24px; height: 24px; border: 3px solid rgba(0, 0, 0, 0.35); }
 .tod-ticks { display: flex; justify-content: space-between; margin: 0 6px; font-size: 0.6rem; font-weight: 600; opacity: 0.65; }
+.tier[hidden] { display: none; }
