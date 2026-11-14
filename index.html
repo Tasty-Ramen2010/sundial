@@ -72,16 +72,18 @@
 <!-- 01: look around -->
 <section id="explore" class="scene explore" aria-label="Explore the globe">
   <p class="explore-hint"><span aria-hidden="true">⟲</span> Drag to look around. Tap a glowing country.</p>
-  <aside class="orbit-lens" aria-labelledby="lens-title">
-    <div class="lens-head"><p class="eyebrow">Live experiment</p><h2 id="lens-title">Orbit lens</h2></div>
-    <p class="lens-copy">Move east or west. The same UTC moment becomes a different local fire hour.</p>
-    <label for="lens-lon">Longitude <output id="lens-lon-out" for="lens-lon">0°</output></label>
-    <input id="lens-lon" type="range" min="-180" max="180" step="1" value="0">
-    <div class="lens-readout" aria-live="polite">
-      <div><span>Local solar time</span><strong id="lens-time">12:00</strong></div>
-      <div><span>Expected activity</span><strong id="lens-activity">Peak</strong></div>
+  <aside class="fairness-lab" aria-labelledby="fair-title">
+    <div class="fair-head"><p class="eyebrow">The SUNDIAL difference</p><h2 id="fair-title">Make the record fair.</h2></div>
+    <p class="fair-copy" id="fair-copy">A satellite snapshot undercounts places it sees before dawn. Watch the bright afternoon move around the globe.</p>
+    <div class="fair-switch" role="group" aria-label="Globe data view">
+      <button type="button" class="on" data-fair="observed" aria-pressed="true"><span>01</span>Satellite view</button>
+      <button type="button" data-fair="fair" aria-pressed="false"><span>02</span>Fair record</button>
     </div>
-    <div class="lens-scale" aria-hidden="true"><span>quiet</span><i><b id="lens-dot"></b></i><span>peak</span></div>
+    <div class="fair-result" aria-live="polite">
+      <span id="fair-kicker">Observed now</span>
+      <strong id="fair-result">Local clock bias is visible</strong>
+    </div>
+    <a href="#swath" class="fair-link">See how we correct it <span>↓</span></a>
   </aside>
 </section>
 

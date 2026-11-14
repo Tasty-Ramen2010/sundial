@@ -119,7 +119,6 @@
       hudAt = now;
       $('#hud-utc').textContent = 'UTC ' + S.fmtH(G.T.utc);
       $('#hud-month').textContent = MON[Math.floor(G.T.month - 1 + 12) % 12];
-      updateLens();
     }
     requestAnimationFrame(frame);
   }
@@ -136,7 +135,10 @@
     const mid = innerHeight * 0.5;
     let pick = 'hero';
     for (const s of scenes) { const r = s.getBoundingClientRect(); if (r.top <= mid && r.bottom > mid) pick = s.id; }
-    if (pick !== focusId) { focusId = pick; G.focus(FOCI[pick] || FOCI.hero); }
+    if (pick !== focusId) {
+      if (pick !== 'explore' && $('.fairness-lab.is-fair')) $('.fair-switch [data-fair="observed"]').click();
+      focusId = pick; G.focus(FOCI[pick] || FOCI.hero);
+    }
     document.body.classList.toggle('on-hero', pick === 'hero');
     $$('#dock a').forEach((a) => a.classList.toggle('on', a.dataset.for === dockMap[pick]));
     const past = closing.getBoundingClientRect().top < innerHeight * 0.4;
@@ -149,19 +151,18 @@
   addEventListener('scroll', onScroll, { passive: true });
   addEventListener('resize', () => { layoutTitle(); onScroll(); });
 
-  /* ============ orbit lens: make local solar time tangible ============ */
-  const lensLon = $('#lens-lon');
-  function updateLens() {
-    const lon = +lensLon.value;
-    const h = ((G.T.utc + lon / 15) % 24 + 24) % 24;
-    const activity = S.D(h);
-    $('#lens-lon-out').textContent = `${Math.abs(lon)}°${lon < 0 ? 'W' : lon > 0 ? 'E' : ''}`;
-    $('#lens-time').textContent = S.fmtH(h);
-    $('#lens-activity').textContent = activity > .82 ? 'Near peak' : activity > .5 ? 'Rising' : activity > .22 ? 'Low' : 'Quiet';
-    $('#lens-dot').style.left = `${Math.round(activity * 100)}%`;
-  }
-  lensLon.addEventListener('input', updateLens);
-  updateLens();
+  /* ============ fairness switch: observed snapshot vs harmonized potential ============ */
+  $$('.fair-switch button').forEach((button) => button.addEventListener('click', () => {
+    const fair = button.dataset.fair === 'fair';
+    G.setFair(fair);
+    $$('.fair-switch button').forEach((b) => { const on = b === button; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+    $('.fairness-lab').classList.toggle('is-fair', fair);
+    $('#fair-kicker').textContent = fair ? 'Harmonized view' : 'Observed now';
+    $('#fair-result').textContent = fair ? 'The same clock for every place' : 'Local clock bias is visible';
+    $('#fair-copy').textContent = fair
+      ? 'SUNDIAL removes the time-of-day advantage. Fire potential is now comparable across longitudes instead of following the afternoon.'
+      : 'A satellite snapshot undercounts places it sees before dawn. Watch the bright afternoon move around the globe.';
+  }));
 
   /* ============ story figures ============ */
   const D3 = window.d3;

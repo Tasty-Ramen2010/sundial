@@ -13,7 +13,7 @@
   const T = { utc: 11, month: 9.2, playing: !reduce, utcTarget: null, monthTarget: null };
   const V = { lon: -45, lat: 8, R: 300, cx: 0, cy: 0, glass: 0, ring: 0.3, band: 0, ctry: 1, labels: 0 };
   let F = { layout: 'hero', lon: -45, lat: 8, auto: true, ring: 0.3 };
-  let hover = null, selected = null, dragging = false, userUntil = 0, autoLon = -45, inited = false, running = false, last = performance.now();
+  let hover = null, selected = null, dragging = false, userUntil = 0, autoLon = -45, inited = false, running = false, last = performance.now(), fairTarget = 0, fairMix = 0;
   let flagTex = null, pickCb = null, hoverCb = null, bandInfo = () => ({ h: 13.5, c: '125,178,255', label: 'VIIRS' });
 
   const wrap = (a) => ((((a + 180) % 360) + 360) % 360) - 180;
@@ -60,6 +60,7 @@
   function draw(now) {
     const dt = Math.min(0.06, (now - last) / 1000); last = now;
     const DATA = window.DATA;
+    fairMix += (fairTarget - fairMix) * 0.08;
 
     // clock
     if (T.utcTarget != null) {
@@ -167,7 +168,8 @@
       if (v < 0.6) continue;
       const s = Math.pow(Math.min(1, Math.log1p(v) / lp), 1.7);
       const lt = (T.utc + C.lon[i] / 15 + 24) % 24;
-      const lvl = s * (0.25 + 0.75 * diurnal(lt));
+      const observed = 0.25 + 0.75 * diurnal(lt);
+      const lvl = s * (observed * (1 - fairMix) + fairMix);
       if (lvl < 0.07) continue;
       const b = Math.min(4, Math.floor(lvl * 6.2));
       const q = proj([C.lon[i], C.lat[i]]);
@@ -294,6 +296,7 @@
     setFlag(c) { flagTex = c; },
     onPick(cb) { pickCb = cb; }, onHover(cb) { hoverCb = cb; },
     setBandInfo(fn) { bandInfo = fn; },
+    setFair(on) { fairTarget = on ? 1 : 0; },
     lockLocalHour(hour, lon) { T.utcTarget = ((hour - lon / 15) % 24 + 24) % 24; },
     unlock() { T.utcTarget = null; T.monthTarget = null; },
     setMonth(m) { T.monthTarget = m; },
