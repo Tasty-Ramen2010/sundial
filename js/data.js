@@ -8,6 +8,12 @@
       D.score = Object.fromEntries(sb.rows.map((r) => [r.country, r]));
       D.byId = Object.fromEntries(meta.countries.map((c) => [c.id, c]));
       D.features = Object.fromEntries(geo.features.map((f) => [f.properties.id, f]));
+      D.fbox = {};   // bounding box per country, so hover tests can skip shapes that cannot contain the pointer
+      for (const id in D.features) {
+        let a = 1e9, b = 1e9, c = -1e9, d = -1e9;
+        const walk = (x) => { if (typeof x[0] === 'number') { if (x[0] < a) a = x[0]; if (x[0] > c) c = x[0]; if (x[1] < b) b = x[1]; if (x[1] > d) d = x[1]; } else x.forEach(walk); };
+        walk(D.features[id].geometry.coordinates); D.fbox[id] = [a, b, c, d];
+      }
       // fire climatology -> typed arrays for the globe
       const cells = climo.cells, n = cells.length;
       const x = new Float32Array(n), y = new Float32Array(n), z = new Float32Array(n), lon = new Float32Array(n), lat = new Float32Array(n);

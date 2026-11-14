@@ -102,7 +102,12 @@
   function hit(px, py) {
     const ll = proj.invert([px, py]);
     if (!ll || d3.geoDistance(ll, [V.lon, V.lat]) > 1.5 || !window.DATA.features) return null;
-    for (const id in window.DATA.features) if (d3.geoContains(window.DATA.features[id], ll)) return id;
+    const fb = window.DATA.fbox;
+    for (const id in window.DATA.features) {
+      const bb = fb && fb[id];
+      if (bb && (ll[0] < bb[0] || ll[0] > bb[2] || ll[1] < bb[1] || ll[1] > bb[3])) continue;
+      if (d3.geoContains(window.DATA.features[id], ll)) return id;
+    }
     return null;
   }
 
@@ -296,6 +301,8 @@
     ctx.font = '600 10.5px "Hanken Grotesk", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     DATA.meta.countries.forEach((c) => {
       if (d3.geoDistance(c.centroid, [V.lon, V.lat]) > 1.2) return;
+      const span = Math.max(c.bbox[3] - c.bbox[1], (c.bbox[2] - c.bbox[0]) * Math.cos(c.centroid[1] * Math.PI / 180));
+      if (span < 15 && c.id !== hover) return;
       const q = proj(c.centroid);
       ctx.fillStyle = `rgba(243,234,217,${(c.id === hover ? 1 : 0.72) * V.labels})`;
       ctx.fillText(c.name.replace('United States', 'USA').toUpperCase(), q[0], q[1]);

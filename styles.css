@@ -140,7 +140,7 @@ input[type="number"]:focus { border-color: var(--ember); outline: none; }
 .calc-out { margin: 0.9rem 0 0.3rem; } .calc-out span { color: var(--sun); font-weight: 600; } .calc-out #c-res { color: var(--ember); font-size: 1.2rem; }
 
 /* evidence */
-.board { list-style: none; margin: 1.2rem 0; padding: 0; border-top: 1px solid var(--line); }
+.board { list-style: none; margin: 1.2rem 0; padding: 0 0.4rem 0 0; border-top: 1px solid var(--line); max-height: 22rem; overflow-y: auto; scrollbar-width: thin; }
 .board li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) 4.4rem 5.4rem; gap: 0.9rem; align-items: center; padding: 0.55rem 0; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
 .board .b-h { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); padding-bottom: 0.4rem; }
 .b-bar { position: relative; height: 12px; background: rgba(243, 234, 217, 0.08); border-radius: 6px; overflow: hidden; }

@@ -1,0 +1,38 @@
+--- a/pipeline/clean.py	2026-11-13 23:27:23
++++ b/pipeline/clean.py	2026-11-14 01:03:19
+@@ -19,7 +19,8 @@
+     source, year, *country = path.stem.split("_")
+     df = pl.read_csv(path, columns=COLS, schema_overrides={
+         "acq_time": pl.Utf8, "confidence": pl.Utf8, "satellite": pl.Utf8, "type": pl.Int64,
+-        "acq_date": pl.Utf8})
++        "acq_date": pl.Utf8, "latitude": pl.Float64, "longitude": pl.Float64, "scan": pl.Float64,
++        "track": pl.Float64, "frp": pl.Float64, "daynight": pl.Utf8})
+     df = df.filter(pl.col("type").is_null() | (pl.col("type") == 0))
+     if source == "modis":
+         df = df.filter(pl.col("confidence").cast(pl.Int64, strict=False) >= 30)
+--- a/pipeline/boundaries.py	2026-11-13 23:27:23
++++ b/pipeline/boundaries.py	2026-11-14 01:06:15
+@@ -15,7 +15,11 @@
+          "land": "ne_110m_land.geojson",
+          "land50": "ne_50m_land.geojson"}
+ # FIRMS file name -> Natural Earth country name
+-NE_NAME = {"United_States": "United States of America"}
++NE_NAME = {"United_States": "United States of America", "Cote_d_Ivoire": "Ivory Coast", "Lao_PDR": "Laos",
++           "Russian_Federation": "Russia", "Republic_of_Congo": "Republic of the Congo",
++           "Tanzania": "United Republic of Tanzania", "Democratic_Republic_of_the_Congo": "Democratic Republic of the Congo"}
++# display names (so the app shows "Russia", not "Russian Federation")
++DISPLAY = {"United States of America": "United States", "United Republic of Tanzania": "Tanzania", "Ivory Coast": "Côte d'Ivoire"}
+ 
+ 
+ def fetch(key):
+@@ -48,8 +52,8 @@
+         name = f["properties"]["ADMIN"]
+         if name in wanted:
+             feats.append({"type": "Feature", "geometry": rounded(f["geometry"], 0.03),
+-                          "properties": {"id": wanted[name], "name": name.replace("United States of America", "United States")}})
+-    missing = set(wanted) - {f["properties"]["name"].replace("United States", "United States of America") for f in feats}
++                          "properties": {"id": wanted[name], "name": DISPLAY.get(name, name)}})
++    missing = set(wanted) - {NE_NAME.get(f["properties"]["id"], f["properties"]["id"].replace("_", " ")) for f in feats}
+     if missing:
+         print("WARNING: no border found for", missing)
+     DATA.mkdir(exist_ok=True)

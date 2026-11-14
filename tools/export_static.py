@@ -54,8 +54,8 @@ nyears = 14
 cl = g.group_by("gy", "gx", "mo").agg((pl.col("harm").sum() / nyears).alias("v"))
 cells = {}
 for gy, gx, mo, v in cl.iter_rows():
-    cells.setdefault((gy, gx), [0] * 12)[mo - 1] = round(float(v), 1)
-rows = [[round((gy + 0.5) * 0.5, 2), round((gx + 0.5) * 0.5, 2), vals] for (gy, gx), vals in cells.items() if max(vals) >= 3]
+    cells.setdefault((gy, gx), [0] * 12)[mo - 1] = int(round(float(v)))
+rows = [[round((gy + 0.5) * 0.5, 2), round((gx + 0.5) * 0.5, 2), vals] for (gy, gx), vals in cells.items() if max(vals) >= 4]
 rows.sort(key=lambda r: -max(r[2]))
 tot += dump(out / "climo.json", {"cell_deg": 0.5, "years": "2012-2025", "unit": "harmonized detections per month (mean)", "cells": rows})
 print("cells kept:", len(rows), "| total bytes written:", tot // 1024, "KB")

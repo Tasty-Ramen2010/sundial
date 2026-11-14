@@ -9,6 +9,7 @@
   const MONF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const fmt = (n) => n == null ? '–' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : Math.round(n) + '';
+  const p0 = (v) => (v == null ? 'n/a' : v.toFixed(0) + '%');
   const ymLabel = (ym) => `${MON[ym % 100 - 1]} ${Math.floor(ym / 100)}`;
   const nowUTC = () => { const d = new Date(); return d.getUTCHours() + d.getUTCMinutes() / 60; };
   const hourAt = (lon) => ((nowUTC() + lon / 15) % 24 + 24) % 24;
@@ -216,15 +217,16 @@
 
   /* ============ real numbers in the story ============ */
   function initEvidence() {
-    const rows = Object.values(DATA.score).map((r) => ({ id: r.country, name: DATA.byId[r.country].name, gap: r['V2_terra_drift.gap_closed_pct'], err: r['V1_holdout.median_abs_err_pct'] })).sort((a, b) => b.gap - a.gap);
+    const all = Object.values(DATA.score).map((r) => ({ id: r.country, name: DATA.byId[r.country].name, gap: r['V2_terra_drift.gap_closed_pct'], err: r['V1_holdout.median_abs_err_pct'] }));
+    const rows = all.filter((r) => r.gap != null).sort((a, b) => b.gap - a.gap), skipped = all.filter((r) => r.gap == null);
     const better = rows.filter((r) => r.gap > 0), worse = rows.filter((r) => r.gap <= 0);
-    $('#ev-title').textContent = `It shrank Terra's fake trend in ${better.length} of ${rows.length} countries.`;
+    $('#ev-title').textContent = `It shrank Terra's fake trend in ${better.length} of ${rows.length} tested countries.`;
     $('#board').innerHTML = rows.map((r) => {
       const w = r.gap <= 0, wd = clamp(Math.abs(r.gap), 0, 100);
       return `<li class="${w ? 'worse' : ''}"><span>${r.name}</span><span class="b-bar" role="img" aria-label="${Math.round(r.gap)} percent of the fake trend removed"><i style="width:${wd}%"></i></span><span class="b-num">${Math.round(r.gap)}%</span><span class="b-tag">${w ? 'Worse' : 'Better'}</span></li>`;
     }).join('');
-    const errs = rows.map((r) => r.err).sort((a, b) => a - b);
-    $('#ev-note').textContent = `${worse.length ? 'It made ' + worse.map((r) => r.name).join(' and ') + ' worse, and we show that on purpose. ' : ''}${DATA.score.India && DATA.score.India['V2_terra_drift.gap_closed_pct'] <= 0 ? 'In India the burning schedule itself changed (Punjab crop burning moved later in the day), which breaks the method’s assumption. ' : ''}Converting MODIS to VIIRS units on held-out years (2016 to 2019) is off by a median of ${errs[0].toFixed(1)}% to ${errs[errs.length - 1].toFixed(1)}% per year, depending on the country.`;
+    const errs = rows.map((r) => r.err).filter((e) => e != null).sort((a, b) => a - b);
+    $('#ev-note').textContent = `${skipped.length ? 'Not enough clean data to test ' + skipped.map((r) => r.name).join(', ') + '. ' : ''}${worse.length ? 'It made ' + worse.map((r) => r.name).join(' and ') + ' worse, and we show that on purpose. ' : ''}${DATA.score.India && DATA.score.India['V2_terra_drift.gap_closed_pct'] <= 0 ? 'In India the burning schedule itself changed (Punjab crop burning moved later in the day), which breaks the method’s assumption. ' : ''}Converting MODIS to VIIRS units on held-out years (2016 to 2019) is off by a median of ${errs[0].toFixed(1)}% to ${errs[errs.length - 1].toFixed(1)}% per year, depending on the country.`;
     const a = DATA.score.Angola;
     if (a) $('#drift-angola').innerHTML = `<b>Real result, Angola:</b> after the drift began, Terra alone shows <b>${a['V2_terra_drift.raw_terra_change_pct'].toFixed(0)}%</b> while VIIRS shows <b>${a['V2_terra_drift.viirs_change_pct'].toFixed(0)}%</b>. Our correction brings Terra to <b>${a['V2_terra_drift.corrected_terra_change_pct'] > 0 ? '+' : ''}${a['V2_terra_drift.corrected_terra_change_pct'].toFixed(0)}%</b>. The decline is the satellite waking up earlier, not less fire.`;
     FOCI.evidence.pins = ['Mozambique', 'India', 'Kazakhstan', 'Australia'].map((id) => { const c = DATA.byId[id], r = DATA.score[id]; return { lon: c.centroid[0], lat: c.centroid[1], t: `${c.name} ${Math.round(r['V2_terra_drift.gap_closed_pct'])}%` }; });
@@ -233,7 +235,6 @@
   /* ============ countries: loaded up front so tooltips, the switcher and the screen-reader list work ============ */
   async function buildPlaces() {
     const ids = DATA.meta.countries.map((c) => c.id);
-    await Promise.all(ids.map(DATA.loadSeries));
     $('#places-list').innerHTML = ids.map((id) => `<li><button type="button" data-id="${id}">${DATA.byId[id].name}</button></li>`).join('');
     $('#places-list').addEventListener('click', (e) => { const b = e.target.closest('button[data-id]'); if (b) openPlace(b.dataset.id); });
     $('#switch').innerHTML = ids.map((id) => `<option value="${id}">${DATA.byId[id].name}</option>`).join('');
@@ -375,8 +376,8 @@
   <p class="note" id="ba-note"></p></section>
 <section class="gcard"><h3 class="gh">${ICON.warn} Unusual months</h3><ol class="anoms" id="anoms">${anoms.length ? anoms.map((r) => `<li><button type="button" data-i="${r.i}"><span class="k ${r.z > 0 ? 'up' : 'dn'}">${r.z > 0 ? '▲ High' : '▼ Low'}</span> ${ymLabel(r.m)}<em>${fmt(r.v)} · z ${r.z.toFixed(1)}</em></button></li>`).join('') : '<li class="note">No month passes the |z| ≥ 2 test here.</li>'}</ol></section>
 <section class="gcard"><h3 class="gh">${ICON.check} Does it work here?</h3>
-  ${gap == null ? '<p>No validation for this area.</p>' : `<div class="score"><div><div class="n ${worse ? 'bad' : ''}">${Math.round(gap)}%</div><div class="l">of Terra's fake trend removed</div></div><div><div class="n">${sc['V1_holdout.median_abs_err_pct'].toFixed(1)}%</div><div class="l">median yearly error on held-out years</div></div></div>
-  <p>Terra alone changed by <b>${sc['V2_terra_drift.raw_terra_change_pct'].toFixed(0)}%</b> after the drift began while VIIRS changed by <b>${sc['V2_terra_drift.viirs_change_pct'].toFixed(0)}%</b>. Corrected, Terra changes by <b>${sc['V2_terra_drift.corrected_terra_change_pct'].toFixed(0)}%</b>.</p>
+  ${gap == null ? '<p>No validation for this area.</p>' : `<div class="score"><div><div class="n ${worse ? 'bad' : ''}">${Math.round(gap)}%</div><div class="l">of Terra's fake trend removed</div></div><div><div class="n">${sc['V1_holdout.median_abs_err_pct'] == null ? 'n/a' : sc['V1_holdout.median_abs_err_pct'].toFixed(1) + '%'}</div><div class="l">median yearly error on held-out years</div></div></div>
+  <p>Terra alone changed by <b>${p0(sc['V2_terra_drift.raw_terra_change_pct'])}</b> after the drift began while VIIRS changed by <b>${p0(sc['V2_terra_drift.viirs_change_pct'])}</b>. Corrected, Terra changes by <b>${p0(sc['V2_terra_drift.corrected_terra_change_pct'])}</b>.</p>
   ${worse ? `<p class="note"><b>Here the fix made things worse.</b> ${sh.id === 'India' ? 'Punjab crop burning moved later in the day, which breaks the method’s assumption.' : 'We show this on purpose.'}</p>` : ''}`}</section>
 <section class="gcard span2"><h3 class="gh">${ICON.down} Download</h3><div class="dl"><button type="button" class="btn" id="dl-csv">Monthly table (CSV)</button><a class="btn ghost" href="https://firms.modaps.eosdis.nasa.gov/download/" target="_blank" rel="noopener">NASA FIRMS raw archive ↗</a><button type="button" class="btn ghost" id="dl-link">Copy link to this view</button></div>
   <p class="note">One row per month: harmonized count with 95% band, anomaly score, raw counts per satellite, uncorrected and drift-corrected MODIS, pass times and fire power. Hotspot-level files come from the team's server app.</p><p class="toast" id="toast" role="status" aria-live="polite"></p></section>`;
@@ -509,9 +510,9 @@
   const gtip = $('#gtip');
   function hideTip() { gtip.hidden = true; }
   G.onHover((id, x, y) => {
-    if (!id || !DATA.series[id] || st.sheetOpen) { hideTip(); return; }
-    const s = DATA.series[id], i = s.months.length - 1;
-    gtip.innerHTML = `${DATA.byId[id].name}<small>${ymLabel(s.months[i])} · ${fmt(s.harm[i])} fires · tap to open</small>`;
+    if (!id || st.sheetOpen) { hideTip(); return; }
+    const s = DATA.series[id];
+    gtip.innerHTML = s ? `${DATA.byId[id].name}<small>${ymLabel(s.months[s.months.length - 1])} · ${fmt(s.harm[s.months.length - 1])} fires · tap to open</small>` : `${DATA.byId[id].name}<small>tap to open</small>`;
     gtip.style.left = x + 'px'; gtip.style.top = y + 'px'; gtip.hidden = false;
   });
   G.onPick((id) => { hideTip(); openPlace(id); });
