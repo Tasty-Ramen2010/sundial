@@ -96,6 +96,7 @@
     ctx.fillStyle = `rgb(${s.c})`; ctx.fillRect(-4.5 * k, -3 * k, 9 * k, 6 * k);
     ctx.strokeStyle = 'rgba(10,9,8,.55)'; ctx.lineWidth = 0.8; ctx.strokeRect(-3 * k, -13 * k, 6 * k, 8.5 * k); ctx.strokeRect(-3 * k, 4.5 * k, 6 * k, 8.5 * k);
     ctx.restore();
+    if (F.layout === 'hero') { ctx.globalAlpha = 1; return; }   // title screen: just the satellite, no caption
     ctx.font = '700 10.5px "Hanken Grotesk", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.globalAlpha = f.a;
     ctx.fillStyle = `rgb(${s.c})`; ctx.fillText(`${s.name} · ${s.sensor}`, p[0] + 20 * k, p[1] - 2);
     ctx.fillStyle = tone(0.8); ctx.font = '600 10px "Hanken Grotesk", system-ui, sans-serif'; ctx.fillText(`${s.res} · passes ~${S.fmtH(s.h)} local time now`, p[0] + 20 * k, p[1] + 11);

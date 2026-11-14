@@ -305,9 +305,9 @@
     stopDay(); st.sheetOpen = false; document.body.classList.remove('sheet-open');
     sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true');
     G.setSelected(null); G.setFlag(null); G.unlock(); sheetCtx = null;
-    G.focus(FOCI.explore); focusId = 'explore';
+    G.focus(FOCI.cameras || FOCI.hero); focusId = 'cameras';
     placeTitle(); onScroll();
-    try { history.replaceState(null, '', '#explore'); } catch (e) { /* ignore */ }
+    try { history.replaceState(null, '', '#cameras'); } catch (e) { /* ignore */ }
   }
   $('#sheet-back').addEventListener('click', closePlace);
   scroller.addEventListener('pointermove', (e) => {
@@ -555,7 +555,7 @@
     if (!reduce) { const t0 = performance.now(); (function unmelt(now) { const t = clamp((now - t0) / 2200, 0, 1); baseYear = 2050 - 67 * (1 - Math.pow(1 - t, 3)); placeTitle(); if (t < 1) requestAnimationFrame(unmelt); })(t0); }
     if (!d) { $('.explore-hint').textContent = 'The data files did not load. Open this page over http(s), not as a local file.'; return; }
     initEvidence();
-    $('.explore-hint').innerHTML = `<span aria-hidden="true">⟲</span> Drag to look around. Tap a glowing country (brighter = more fire). ${DATA.meta.countries.length} countries.`;
+    $('.explore-hint').innerHTML = `<span aria-hidden="true">⟲</span> Next to each card the globe is live: drag it, and tap a glowing country (brighter = more fire). ${DATA.meta.countries.length} countries.`;
     await buildPlaces();
     const m = /place=([A-Za-z_]+)(?:&m=(\d{6}))?/.exec(location.hash);
     if (m && DATA.byId[m[1]]) { const s = await DATA.loadSeries(m[1]); const idx = m[2] ? s.months.indexOf(+m[2]) : -1; openPlace(m[1], idx >= 0 ? { idx } : {}); }

@@ -15,7 +15,7 @@
 </head>
 <body class="loading">
 
-<a class="skip" href="#explore">Skip to the globe</a>
+<a class="skip" href="#cameras">Skip to the story</a>
 
 <div id="loader" role="status" aria-label="Loading SUNDIAL">
   <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
@@ -50,16 +50,12 @@
     <p class="intro-kicker">NASA Space Apps Challenge 2026 · Making two fire-watching satellite families agree (MODIS and VIIRS)</p>
     <p class="intro-lede">Satellites count more fires in the afternoon than the morning, and two of them have spent five years drifting through the day. We rebuilt <b>25 years of NASA fire detections</b> so every year can be compared with every other, like for like.</p>
     <p class="chin-actions">
-      <a class="btn" href="#explore">Look around the globe</a>
-      <a class="btn ghost" href="#cameras">How it works</a>
+      <a class="btn" href="#cameras">See how it works</a>
     </p>
+    <p class="explore-hint"><span aria-hidden="true">⟲</span> Loading the globe…</p>
   </div>
 </section>
 
-<!-- 01: look around -->
-<section id="explore" class="scene explore" aria-label="Explore the globe">
-  <p class="explore-hint"><span aria-hidden="true">⟲</span> Drag to look around. Tap a glowing country.</p>
-</section>
 
 <!-- 02 -->
 <section id="cameras" class="scene">
@@ -173,8 +169,7 @@
 <nav class="sr" aria-label="Countries with data"><ul id="places-list"></ul></nav>
 
 <nav id="dock" class="dock" aria-label="Sections">
-  <a href="#explore" data-for="explore"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17"/></svg><span>Globe</span></a>
-  <a href="#cameras" data-for="cameras"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 12 17 6.5M12 6v1.5M18 12h-1.5M6 12h1.5"/></svg><span>Problem</span></a>
+    <a href="#cameras" data-for="cameras"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 12 17 6.5M12 6v1.5M18 12h-1.5M6 12h1.5"/></svg><span>Problem</span></a>
   <a href="#swath" data-for="swath"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c4-9 14-9 18 0M3 17h18"/><circle cx="8" cy="12" r="1.2"/><circle cx="16" cy="12" r="1.2"/></svg><span>Method</span></a>
   <a href="#evidence" data-for="evidence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg><span>Evidence</span></a>
 </nav>
