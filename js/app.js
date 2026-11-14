@@ -58,7 +58,7 @@
     const W = innerWidth, H = innerHeight, mobile = W < 860;
     tw = title.offsetWidth || tw; th = title.offsetHeight || th;
     const big = parseFloat(title.style.fontSize) || 100, small = mobile ? 16 : 21, s = small / big;
-    const p = st.sheetOpen ? 1 : clamp(scrollY / (H * 0.55), 0, 1);
+    const p = st.sheetOpen ? 1 : clamp(scrollY / (H * 0.85), 0, 1);
     const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
     const cy = mobile ? H * 0.36 : H * 0.47;
     const x0 = (W - tw) / 2, y0 = cy - th / 2, x1 = W - tw * s - (mobile ? 16 : 30), y1 = mobile ? 15 : 22;

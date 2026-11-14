@@ -50,6 +50,55 @@
     return [wrap(lon), 23.44 * Math.sin(((2 * Math.PI) / 365) * (doy - 80))];
   }
 
+  /* ---- fly-overs: a MODIS satellite and a VIIRS satellite cross the globe every so often, lighting the fires they see ---- */
+  const SATS = [
+    { name: 'TERRA', sensor: 'MODIS', res: '1 km pixels', h: S.terraH(2026), dir: -1, w: 5.2, c: '255,198,90' },
+    { name: 'SUOMI NPP', sensor: 'VIIRS', res: '375 m pixels', h: 13.5, dir: 1, w: 6.6, c: '125,178,255' },
+    { name: 'AQUA', sensor: 'MODIS', res: '1 km pixels', h: S.aquaH(2026), dir: 1, w: 5.2, c: '255,106,26' },
+    { name: 'NOAA-20', sensor: 'VIIRS', res: '375 m pixels', h: 13.4, dir: 1, w: 6.6, c: '160,205,255' }
+  ];
+  let fly = null, flyIdx = 0, flyWait = 0, nextFly = performance.now() + 4500, curFly = null;
+  function startFly(now) {
+    const s = SATS[flyIdx % SATS.length];
+    const lon0 = wrap((s.h - T.utc) * 15);
+    if (Math.abs(angDiff(lon0, V.lon)) > 58) { if (++flyWait > 14) { flyIdx++; flyWait = 0; } nextFly = now + 1200; return; }
+    fly = { s, lon0, t0: now, dur: 7000, end: 0 }; flyIdx++; flyWait = 0;
+  }
+  function updateFly(now) {
+    if (!fly && now > nextFly && !reduce && F.layout !== 'sheet' && V.glass < 0.3 && !dragging && !document.hidden) startFly(now);
+    curFly = null; if (!fly) return;
+    const u = (now - fly.t0) / fly.dur; let a = 1;
+    if (u >= 1) { if (!fly.end) fly.end = now; a = 1 - (now - fly.end) / 1400; if (a <= 0) { fly = null; nextFly = now + 9000 + Math.random() * 6000; return; } }
+    const uu = Math.min(1, u), lat = fly.s.dir < 0 ? 84 - 168 * uu : -84 + 168 * uu;
+    curFly = { s: fly.s, lon: fly.lon0, lat, a, w: fly.s.w, dir: fly.s.dir };
+  }
+  function drawFly() {
+    if (!curFly) return;
+    const f = curFly, s = f.s, lam = V.lon * Math.PI / 180, phi = V.lat * Math.PI / 180;
+    const vis = (lon, lat) => { const a = lon * Math.PI / 180, b = lat * Math.PI / 180; return Math.cos(b) * Math.cos(a) * Math.cos(phi) * Math.cos(lam) + Math.cos(b) * Math.sin(a) * Math.cos(phi) * Math.sin(lam) + Math.sin(b) * Math.sin(phi) > 0.07; };
+    const lo = f.dir < 0 ? f.lat : -84, hi = f.dir < 0 ? 84 : f.lat;
+    if (hi - lo > 0.5) {
+      const band = d3.geoGraticule().extent([[f.lon - f.w, lo], [f.lon + f.w, hi]]).outline();
+      ctx.fillStyle = `rgba(${s.c},${0.13 * f.a})`; ctx.strokeStyle = `rgba(${s.c},${0.65 * f.a})`; ctx.lineWidth = 1;
+      ctx.beginPath(); path(band); ctx.fill(); ctx.stroke();
+    }
+    if (!vis(f.lon, f.lat)) return;
+    const lift = (ll) => { const q = proj(ll); return [V.cx + (q[0] - V.cx) * 1.08, V.cy + (q[1] - V.cy) * 1.08]; };
+    const p = lift([f.lon, f.lat]), p2 = lift([f.lon, f.lat + f.dir * 3]);
+    const ang = Math.atan2(p2[1] - p[1], p2[0] - p[0]), k = Math.max(0.95, Math.min(2.4, V.R / 250));
+    ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(ang); ctx.globalAlpha = f.a;
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 22 * k); g.addColorStop(0, `rgba(${s.c},.5)`); g.addColorStop(1, `rgba(${s.c},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 22 * k, 0, 6.3); ctx.fill();
+    ctx.fillStyle = 'rgba(243,234,217,.95)'; ctx.fillRect(-3 * k, -13 * k, 6 * k, 8.5 * k); ctx.fillRect(-3 * k, 4.5 * k, 6 * k, 8.5 * k);
+    ctx.fillStyle = `rgb(${s.c})`; ctx.fillRect(-4.5 * k, -3 * k, 9 * k, 6 * k);
+    ctx.strokeStyle = 'rgba(10,9,8,.55)'; ctx.lineWidth = 0.8; ctx.strokeRect(-3 * k, -13 * k, 6 * k, 8.5 * k); ctx.strokeRect(-3 * k, 4.5 * k, 6 * k, 8.5 * k);
+    ctx.restore();
+    ctx.font = '700 10.5px "Hanken Grotesk", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.globalAlpha = f.a;
+    ctx.fillStyle = `rgb(${s.c})`; ctx.fillText(`${s.name} · ${s.sensor}`, p[0] + 20 * k, p[1] - 2);
+    ctx.fillStyle = 'rgba(243,234,217,.8)'; ctx.font = '600 10px "Hanken Grotesk", system-ui, sans-serif'; ctx.fillText(`${s.res} · passes ~${S.fmtH(s.h)} local`, p[0] + 20 * k, p[1] + 11);
+    ctx.globalAlpha = 1;
+  }
+
   function hit(px, py) {
     const ll = proj.invert([px, py]);
     if (!ll || d3.geoDistance(ll, [V.lon, V.lat]) > 1.5 || !window.DATA.features) return null;
@@ -74,6 +123,7 @@
       T.month = 1 + ((T.month - 1 + d * 0.03 + 12) % 12);
     } else if (T.playing) T.month = 1 + ((T.month - 1 + dt * (12 / 80)) % 12);
 
+    updateFly(now);
     // ease the camera
     const L = layout(F), e = inited ? 0.075 : 1;
     V.R *= Math.pow(L.R / V.R, e);
@@ -121,6 +171,7 @@
     if (DATA.features) drawCountries();
     if (V.band > 0.02 && F.bands) drawBands();
     if (DATA.climo) drawFires(DATA.climo);
+    drawFly();
 
     if (g1 > 0.02) { ctx.strokeStyle = `rgba(243,234,217,${0.22 * g1})`; ctx.lineWidth = 1; ctx.beginPath(); path({ type: 'Sphere' }); ctx.stroke(); }
     if (V.ring > 0.03 && g1 > 0.1) drawRing(sunPos()[0], V.ring * g1);
@@ -167,7 +218,9 @@
       if (v < 0.6) continue;
       const s = Math.pow(Math.min(1, Math.log1p(v) / lp), 1.7);
       const lt = (T.utc + C.lon[i] / 15 + 24) % 24;
-      const lvl = s * (0.25 + 0.75 * diurnal(lt));
+      let boost = 0;
+      if (curFly) { const dl = Math.abs(wrap(C.lon[i] - curFly.lon)); if (dl < curFly.w && (curFly.dir < 0 ? C.lat[i] >= curFly.lat : C.lat[i] <= curFly.lat)) boost = curFly.a; }
+      const lvl = Math.min(1, s * (0.25 + 0.75 * diurnal(lt)) + 0.55 * boost * Math.max(s, 0.4));
       if (lvl < 0.07) continue;
       const b = Math.min(4, Math.floor(lvl * 6.2));
       const q = proj([C.lon[i], C.lat[i]]);

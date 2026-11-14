@@ -59,7 +59,8 @@ body.sheet-open .hud, body.past-stage .hud { opacity: 0; }
 
 /* ---------- the title ---------- */
 #title { position: fixed; left: 0; top: 0; z-index: 30; margin: 0; transform-origin: 0 0; white-space: nowrap;
-  font: 400 12vw/1 var(--display); letter-spacing: 0; font-variation-settings: "YEAR" var(--year, 1983); opacity: 0; transition: opacity 0.8s; will-change: transform; text-shadow: 0 2px 40px rgba(10, 9, 8, 0.55); }
+  font: 400 12vw/1 var(--display); letter-spacing: 0; font-variation-settings: "YEAR" var(--year, 1983); opacity: 0; transition: opacity 0.8s; will-change: transform; mix-blend-mode: difference; }
+body.sheet-open #title { mix-blend-mode: normal; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.5); }
 #title a { text-decoration: none; color: var(--paper); pointer-events: none; display: block; }
 #title.docked a { pointer-events: auto; }
 body:not(.loading) #title { opacity: 1; }
@@ -68,13 +69,19 @@ body:not(.loading) #title { opacity: 1; }
 .scene { position: relative; z-index: 3; min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding: 6rem var(--gut); pointer-events: none; }
 .scene.tall { min-height: 320vh; min-height: 320svh; align-items: flex-start; }
 .hero { padding: 0; align-items: flex-start; height: 100vh; height: 100svh; overflow: hidden; }
-.hero-kicker-unused { position: absolute; top: 1.3rem; left: var(--gut); margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sun); max-width: 20rem; line-height: 1.6; }
-.chin { position: absolute; left: 50%; bottom: -1px; width: min(1500px, 140vw); height: min(38vh, 19rem); height: min(38svh, 19rem); transform: translateX(-50%);
-  background: var(--paper); border-radius: 50% 50% 0 0 / 100% 100% 0 0; pointer-events: auto; display: flex; justify-content: center; align-items: flex-end; padding-bottom: clamp(1.2rem, 4svh, 2.6rem); }
-.chin-in { width: min(33rem, 76vw); text-align: center; color: var(--paperInk); }
-.chin-lede { margin: 0 auto 1.1rem; font-size: clamp(0.98rem, 1.4vw, 1.12rem); line-height: 1.5; }
-.chin-lede b { font-weight: 700; }
-.chin-actions { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin: 0 auto; }
+.unused-kicker { position: absolute; top: 1.3rem; left: var(--gut); margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sun); max-width: 20rem; line-height: 1.6; }
+/* Lambert's chin: the art ends in a curve that hangs down in the middle; the page colour shows in the corners */
+.chin { position: absolute; left: 0; right: 0; bottom: -1px; height: min(26vh, 14rem); height: min(26svh, 14rem); pointer-events: none;
+  background: radial-gradient(ellipse 64% 100% at 50% 0%, transparent 99.3%, var(--paper) 100%); }
+.scroll-cue { position: absolute; left: 50%; bottom: max(1.6rem, 3svh); transform: translateX(-50%); z-index: 2; pointer-events: auto; text-decoration: none; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bone); opacity: 0.85; }
+.scroll-cue span { display: inline-block; animation: bob 1.8s ease-in-out infinite; margin-left: 0.3rem; }
+@keyframes bob { 50% { transform: translateY(4px); } }
+.intro { position: relative; z-index: 3; background: var(--paper); color: var(--paperInk); padding: clamp(2.5rem, 8vw, 5rem) var(--gut) clamp(3rem, 9vw, 6rem); text-align: center; margin-top: -1px; }
+.intro-in { width: min(40rem, 100%); margin: 0 auto; }
+.intro-kicker { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #7a3a14; margin: 0 auto 1.1rem; max-width: 34rem; line-height: 1.6; }
+.intro-lede { font-size: clamp(1.15rem, 2.2vw, 1.5rem); line-height: 1.45; letter-spacing: -0.01em; margin: 0 auto 1.6rem; max-width: none; }
+.intro-lede b { font-weight: 700; }
+.chin-actions { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin: 0 auto; max-width: none; }
 .btn { display: inline-block; font: 600 0.85rem/1 var(--sans); letter-spacing: 0.01em; text-decoration: none; background: var(--ember); color: #1c0c03; border: 1px solid var(--ember); padding: 0.85rem 1.2rem; border-radius: 99px; cursor: pointer; transition: transform 0.15s, background 0.15s; }
 .btn:hover { background: var(--sun); border-color: var(--sun); transform: translateY(-1px); }
 .btn.ghost { background: transparent; color: inherit; border-color: currentColor; opacity: 0.85; }
@@ -82,7 +89,6 @@ body:not(.loading) #title { opacity: 1; }
 .explore { align-items: flex-end; justify-content: center; padding-bottom: 9rem; }
 .explore-hint { margin: 0; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em; color: var(--dim); text-align: center; max-width: none; }
 .explore-hint span { color: var(--ember); margin-right: 0.4rem; }
-@media (max-width: 860px) { .chin { height: min(44svh, 21rem); } }
 
 /* ---------- story ---------- */
 .col { width: min(34rem, 100%); pointer-events: none; }
