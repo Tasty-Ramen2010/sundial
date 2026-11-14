@@ -5,8 +5,8 @@
   D.ready = Promise.all([get('data/meta.json'), get('data/countries.geojson'), get('data/scoreboard.json'), get('data/satellites.json'), get('data/climo.json'), get('data/diurnal.json')])
     .then(([meta, geo, sb, sat, climo, diur]) => {
       D.meta = meta; D.geo = geo; D.sat = sat; D.diurnal = diur;
-      D.score = Object.fromEntries(sb.rows.map((r) => [r.country, r]));
       D.byId = Object.fromEntries(meta.countries.map((c) => [c.id, c]));
+      D.score = Object.fromEntries(sb.rows.filter((r) => D.byId[r.country]).map((r) => [r.country, r]));   // only countries that are on the globe
       D.features = Object.fromEntries(geo.features.map((f) => [f.properties.id, f]));
       D.fbox = {};   // bounding box per country, so hover tests can skip shapes that cannot contain the pointer
       for (const id in D.features) {

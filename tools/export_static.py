@@ -61,7 +61,8 @@ for c in SHOWN:
 
 tot += dump(out / "diurnal.json", B.DIURNAL)
 tot += dump(out / "satellites.json", B.satellites())
-tot += dump(out / "scoreboard.json", B.scoreboard())
+sc = B.scoreboard(); shown_ids = {c["id"] for c in SHOWN}; sc["rows"] = [r for r in sc["rows"] if r["country"] in shown_ids]
+tot += dump(out / "scoreboard.json", sc)
 shutil.copy(B.DATA / "countries.geojson", out / "countries.geojson")
 
 # Real fire climatology for the globe: mean harmonized detections per 0.5 degree cell for each calendar

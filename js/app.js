@@ -41,9 +41,9 @@
   };
   G.setBandInfo((id) => {
     const y = st.year;
-    if (id === 'terra') return { h: S.terraH(y), c: '255,198,90', label: 'TERRA' };
-    if (id === 'aqua') return { h: S.aquaH(y), c: '255,106,26', label: 'AQUA' };
-    return { h: S.VIIRS_H, c: '125,178,255', label: 'VIIRS' };
+    if (id === 'terra') return { h: S.terraH(y), c: '255,198,90', cl: '176,104,6', label: 'TERRA' };
+    if (id === 'aqua') return { h: S.aquaH(y), c: '255,106,26', cl: '200,60,8', label: 'AQUA' };
+    return { h: S.VIIRS_H, c: '125,178,255', cl: '29,95,180', label: 'VIIRS' };
   });
 
   /* ============ title: big over the globe, then docks top right ============ */
@@ -62,7 +62,7 @@
     const big = parseFloat(title.style.fontSize) || 100, small = mobile ? 16 : 21, s = small / big;
     const p = st.sheetOpen ? 1 : clamp(scrollY / (H * 0.85), 0, 1);
     const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-    const cy = mobile ? H * 0.36 : H * 0.47;
+    const cy = mobile ? H * 0.44 : H * 0.47;
     const x0 = (W - tw) / 2, y0 = cy - th / 2, x1 = W - tw * s - (mobile ? 16 : 30), y1 = mobile ? 15 : 22;
     title.style.transform = `translate(${x0 + (x1 - x0) * e}px,${y0 + (y1 - y0) * e}px) scale(${1 + (s - 1) * e})`;
     title.classList.toggle('docked', p > 0.95);
@@ -70,25 +70,35 @@
     title.style.setProperty('--year', (baseYear + (reduce ? 0 : 38 * prog)).toFixed(1));
   }
 
-  /* ============ sky: the background is the sky over where you are looking ============ */
-  const skyEl = $('#sky');
-  const DARK = { top: [10, 9, 8], mid: [10, 9, 8], bot: [24, 18, 13] };
-  const cur = { top: DARK.top.slice(), mid: DARK.mid.slice(), bot: DARK.bot.slice() };
-  let sheetCtx = null, lastSkyStr = '';
+  /* ============ sky ============
+     Title screen: black with distant stars. Everything after it: paper. A country sheet: black with an orange tint from one side
+     that follows the local sun, and gets deeper with the time of day and wherever you point at hotter parts of the country. */
+  const skyEl = $('#sky'), glowEl = $('#glow');
+  const DARK = [10, 9, 8], PAPER = [243, 234, 217];
+  const cur = { c: DARK.slice(), glow: 0.12, x: 90, y: 20, heat: 0 };
+  let sheetCtx = null, lastSkyStr = '', lastGlowStr = '', heatTarget = 0;
+  const glowAlpha = (hour, lat, month, smoke, heat) => {
+    const alt = SKY.sunAlt(lat, month, hour), day = clamp(alt / 38, 0, 1), dusk = clamp((alt + 10) / 14, 0, 1) * (1 - day);
+    return clamp(0.07 + 0.3 * day + 0.12 * dusk + 0.24 * smoke + 0.32 * heat, 0, 0.9);
+  };
+  const glowPos = (hour) => { const t = clamp((hour - 5) / 14, 0, 1); return { x: 100 - t * 100, y: 40 - 40 * Math.sin(Math.PI * t) }; };
   function skyFrame() {
-    let tgt;
-    if (sheetCtx) {
-      const hour = ((G.T.utc + sheetCtx.lon / 15) % 24 + 24) % 24;
-      tgt = SKY.sky(sheetCtx.lat, sheetCtx.month, hour, sheetCtx.smoke);
-      sheetCtx.hourNow = hour;
-    } else {
-      const c = SKY.sky(G.V.lat, G.T.month, G.localHourAtCenter(), 0);
-      const k = focusId === 'hero' ? 0.1 : 0.16;
-      tgt = { top: SKY.mix(DARK.top, c.top, k), mid: SKY.mix(DARK.mid, c.mid, k), bot: SKY.mix(DARK.bot, c.bot, k) };
-    }
-    ['top', 'mid', 'bot'].forEach((k) => { for (let i = 0; i < 3; i++) cur[k][i] += (tgt[k][i] - cur[k][i]) * 0.06; });
-    const str = SKY.gradient({ top: cur.top.map(Math.round), mid: cur.mid.map(Math.round), bot: cur.bot.map(Math.round) });
+    const light = document.body.classList.contains('lightpage');
+    const c = SKY.sky(G.V.lat, G.T.month, G.localHourAtCenter(), 0), base = light ? PAPER : DARK, k = light ? 0.07 : 0.1;
+    const tgt = SKY.mix(base, c.mid, k);
+    for (let i = 0; i < 3; i++) cur.c[i] += (tgt[i] - cur.c[i]) * 0.12;
+    const str = `rgb(${cur.c.map(Math.round).join(',')})`;
     if (str !== lastSkyStr) { skyEl.style.background = str; lastSkyStr = str; }
+    if (sheetCtx) {
+      const hour = ((G.T.utc + sheetCtx.lon / 15) % 24 + 24) % 24; sheetCtx.hourNow = hour;
+      cur.heat += (heatTarget - cur.heat) * 0.08;
+      const a = glowAlpha(hour, sheetCtx.lat, sheetCtx.month, sheetCtx.smoke, cur.heat), p = glowPos(hour);
+      cur.glow += (a - cur.glow) * 0.1; cur.x += (p.x - cur.x) * 0.1; cur.y += (p.y - cur.y) * 0.1;
+      const g = cur.glow, deep = Math.max(0, g - 0.2);
+      const gs = `radial-gradient(ellipse 80% 95% at ${cur.x.toFixed(1)}% ${cur.y.toFixed(1)}%, rgba(255,106,26,${g.toFixed(3)}) 0%, rgba(224,70,12,${(g * 0.5).toFixed(3)}) 36%, rgba(120,30,6,${(deep * 0.35).toFixed(3)}) 62%, transparent 82%), ` +
+        `radial-gradient(ellipse 60% 45% at ${(100 - cur.x).toFixed(1)}% 108%, rgba(150,40,8,${(0.1 + 0.3 * cur.heat).toFixed(3)}) 0%, transparent 70%), #050404`;
+      if (gs !== lastGlowStr) { glowEl.style.background = gs; lastGlowStr = gs; }
+    }
   }
 
   /* ============ embers: smoke you can see when a place is burning ============ */
@@ -114,27 +124,24 @@
   }
 
   /* ============ frame loop for things that are not the globe ============ */
-  let hudAt = 0;
   function frame(now) {
     skyFrame(); embersFrame(now);
-    if (now - hudAt > 250) {
-      hudAt = now;
-      $('#hud-utc').textContent = 'UTC ' + S.fmtH(G.T.utc);
-      $('#hud-month').textContent = MON[Math.floor(G.T.month - 1 + 12) % 12];
-    }
     requestAnimationFrame(frame);
   }
 
   /* ============ scroll ============ */
   const scenes = $$('.scene');
   const dockMap = { hero: 'explore', explore: 'explore', cameras: 'cameras', clock: 'cameras', drift: 'cameras', swath: 'swath', evidence: 'evidence' };
-  const closing = $('#why');
+  const closing = $('#why'), intro = $('#intro');
   function onScroll() {
     placeTitle();
     if (st.sheetOpen) return;
-    const mid = innerHeight * 0.5;
+    const mid = innerHeight * 0.5, introTop = intro.getBoundingClientRect().top;
+    document.body.classList.toggle('lightpage', introTop <= 0);
+    document.body.classList.toggle('ink-title', introTop < 60);   // the paper band now fills the screen, so the page can safely turn white behind it
     let pick = 'hero';
     for (const s of scenes) { const r = s.getBoundingClientRect(); if (r.top <= mid && r.bottom > mid) pick = s.id; }
+    if (pick === 'hero' && introTop < innerHeight * 0.2) pick = 'explore';   // while the paper band is up, the globe quietly moves to its next position behind it
     if (pick !== focusId) { focusId = pick; G.focus(FOCI[pick] || FOCI.hero); }
     document.body.classList.toggle('on-hero', pick === 'hero');
     $$('#dock a').forEach((a) => a.classList.toggle('on', a.dataset.for === dockMap[pick]));
@@ -209,13 +216,6 @@
     svg.append('text').attr('x', 320).attr('y', 168).attr('text-anchor', 'middle').text('≈ 40 minutes of local time · same pixel size');
   })();
 
-  /* hud play/pause */
-  $('#play').addEventListener('click', () => {
-    G.T.playing = !G.T.playing; const b = $('#play');
-    b.setAttribute('aria-pressed', String(G.T.playing)); b.setAttribute('aria-label', G.T.playing ? 'Pause time-lapse' : 'Play time-lapse'); b.textContent = G.T.playing ? '❚❚' : '▶';
-  });
-  if (reduce) { $('#play').textContent = '▶'; $('#play').setAttribute('aria-pressed', 'false'); }
-
   /* ============ real numbers in the story ============ */
   function initEvidence() {
     const all = Object.values(DATA.score).map((r) => ({ id: r.country, name: DATA.byId[r.country].name, gap: r['V2_terra_drift.gap_closed_pct'], err: r['V1_holdout.median_abs_err_pct'] }));
@@ -228,7 +228,9 @@
     }).join('');
     const errs = rows.map((r) => r.err).filter((e) => e != null).sort((a, b) => a - b);
     const tiers = {}; DATA.meta.countries.forEach((c) => { tiers[c.tier] = (tiers[c.tier] || 0) + 1; });
-    $('#ev-note').textContent = `${skipped.length ? 'Not enough clean data to test ' + skipped.length + ' smaller countries. ' : ''}Calibration adapts to the data: ${tiers.measured || 0} countries are calibrated on their own, ${tiers.blended || 0} are blended with the pooled value, ${tiers.borrowed || 0} borrow it. Another ${DATA.meta.excluded || 0} places had too little fire to include. ${worse.length ? 'It made ' + worse.map((r) => r.name).join(' and ') + ' worse, and we show that on purpose. ' : ''}${DATA.score.India && DATA.score.India['V2_terra_drift.gap_closed_pct'] <= 0 ? 'In India the burning schedule itself changed (Punjab crop burning moved later in the day), which breaks the method’s assumption. ' : ''}Converting MODIS to VIIRS units on held-out years (2016 to 2019) is off by a median of ${errs[0].toFixed(1)}% to ${errs[errs.length - 1].toFixed(1)}% per year, depending on the country.`;
+    const lowData = worse.filter((r) => { const t = DATA.byId[r.id].tier; return t === 'blended' || t === 'borrowed'; }).length;
+    const bigWorse = worse.slice().sort((x, y) => (DATA.byId[y.id].calib_n || 0) - (DATA.byId[x.id].calib_n || 0)).slice(0, 4).map((r) => r.name);
+    $('#ev-note').textContent = `${worse.length ? `It made ${worse.length} countries worse, and we show that on purpose: ${lowData} of them have little data here, and the largest are ${bigWorse.join(', ')}. ` : ''}${skipped.length ? 'Not enough clean data to test ' + skipped.length + ' smaller countries. ' : ''}Calibration adapts to the data: ${tiers.measured || 0} countries are calibrated on their own, ${tiers.blended || 0} are blended with the pooled value, ${tiers.borrowed || 0} borrow it. Another ${DATA.meta.excluded || 0} places had too little fire to include. ${DATA.score.India && DATA.score.India['V2_terra_drift.gap_closed_pct'] <= 0 ? 'In India the burning schedule itself changed (Punjab crop burning moved later in the day), which breaks the method\u2019s assumption. ' : ''}Converting MODIS to VIIRS units on held-out years (2016 to 2019) is off by a median of ${errs[0].toFixed(1)}% to ${errs[errs.length - 1].toFixed(1)}% per year, depending on the country.`;
     const a = DATA.score.Angola;
     if (a) $('#drift-angola').innerHTML = `<b>Real result, Angola:</b> after the drift began, Terra alone shows <b>${a['V2_terra_drift.raw_terra_change_pct'].toFixed(0)}%</b> while VIIRS shows <b>${a['V2_terra_drift.viirs_change_pct'].toFixed(0)}%</b>. Our correction brings Terra to <b>${a['V2_terra_drift.corrected_terra_change_pct'] > 0 ? '+' : ''}${a['V2_terra_drift.corrected_terra_change_pct'].toFixed(0)}%</b>. The decline is the satellite waking up earlier, not less fire.`;
     FOCI.evidence.pins = ['Mozambique', 'India', 'Kazakhstan', 'Australia'].map((id) => { const c = DATA.byId[id], r = DATA.score[id]; return { lon: c.centroid[0], lat: c.centroid[1], t: `${c.name} ${Math.round(r['V2_terra_drift.gap_closed_pct'])}%` }; });
@@ -300,6 +302,16 @@
     try { history.replaceState(null, '', '#explore'); } catch (e) { /* ignore */ }
   }
   $('#sheet-back').addEventListener('click', closePlace);
+  scroller.addEventListener('pointermove', (e) => {
+    if (!st.sheetOpen || !sheetCtx) return;
+    if (e.target.closest('.cards, .stepper, .switch, .sheet-back, .tier')) { heatTarget = 0; hideTip(); return; }
+    const v = G.heatAt(e.clientX, e.clientY);
+    if (v == null || v < 0.6) { heatTarget = 0; hideTip(); return; }
+    heatTarget = clamp(Math.log1p(v) / Math.log1p(sheetCtx.vmax || 1), 0, 1);
+    gtip.innerHTML = `Typical ${MONF[sheetCtx.month - 1]}<small>about ${fmt(v)} fires a month in this patch</small>`;
+    gtip.style.left = e.clientX + 'px'; gtip.style.top = e.clientY + 'px'; gtip.hidden = false;
+  });
+  scroller.addEventListener('pointerleave', () => { heatTarget = 0; hideTip(); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && st.sheetOpen) closePlace(); });
   scroller.addEventListener('scroll', () => $('#sheet-bar').classList.toggle('on', scroller.scrollTop > innerHeight * 0.3));
   $('#m-prev').addEventListener('click', () => selectIdx(Math.max(0, sh.idx - 1)));
@@ -315,7 +327,7 @@
   const fmt12 = (h) => { const hh = Math.floor(h) % 24, mm = Math.floor((h % 1) * 60); return `${hh % 12 || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`; };
   function paintTrack() {
     if (!sheetCtx || !$('#tod')) return;
-    const stops = []; for (let h = 0; h <= 24; h++) stops.push(`${SKY.css(SKY.sky(sheetCtx.lat, sheetCtx.month, h % 24, sheetCtx.smoke).mid)} ${(h / 24 * 100).toFixed(1)}%`);
+    const stops = []; for (let h = 0; h <= 24; h++) { const k = clamp(glowAlpha(h % 24, sheetCtx.lat, sheetCtx.month, sheetCtx.smoke, 0) / 0.9, 0, 1); stops.push(`rgb(${Math.round(8 + 247 * k)},${Math.round(6 + 100 * k)},${Math.round(6 + 20 * k)}) ${(h / 24 * 100).toFixed(1)}%`); }
     $('#tod').style.setProperty('--trackbg', `linear-gradient(90deg, ${stops.join(',')})`);
   }
   let dayRaf = 0;
@@ -339,7 +351,7 @@
     $('#m-prev').disabled = i === 0; $('#m-next').disabled = i === s.months.length - 1;
     G.setMonth(mo);
     sheetCtx.month = mo; sheetCtx.smoke = clamp(v / (s.summary.peak_value || 1), 0, 1);
-    emberLevel = sheetCtx.smoke; paintTrack();
+    emberLevel = sheetCtx.smoke; sheetCtx.vmax = G.heatScale(sh.c.bbox, mo); paintTrack();
     $$('.c-cell.sel', cardsEl).forEach((e) => e.classList.remove('sel'));
     const cell = $(`.c-cell[data-i="${i}"]`, cardsEl); if (cell) cell.classList.add('sel');
     refreshPasses(); drawMark();
@@ -404,7 +416,7 @@
     $$('.hs', cardsEl).forEach((e) => (e.innerHTML = ''));
     const put = (h, cls, txt) => { if (h == null) return; const el = $(`.hr[data-h="${Math.floor(h) % 24}"] .hs`, cardsEl); if (el) el.insertAdjacentHTML('beforeend', `<b class="${cls}">${txt}</b>`); };
     put(t, 't', 'T'); put(a, 'a', 'A'); put(v, 'v', 'V');
-    const tm = $('#tod-marks'); if (tm) tm.innerHTML = [[t, 't', 'Terra'], [a, 'a', 'Aqua'], [v, 'v', 'VIIRS']].filter((x) => x[0] != null).map((x) => `<b class="${x[1]}" style="left:${(x[0] / 24 * 100).toFixed(1)}%">${x[2]}</b>`).join('');
+    const tm = $('#tod-marks'); if (tm) { let prev = -99, row = 0; tm.innerHTML = [[t, 't', 'Terra'], [a, 'a', 'Aqua'], [v, 'v', 'VIIRS']].filter((x) => x[0] != null).sort((p, q) => p[0] - q[0]).map((x) => { row = x[0] - prev < 3.6 ? (row + 1) % 3 : 0; prev = x[0]; return `<b class="${x[1]}" style="left:${(x[0] / 24 * 100).toFixed(1)}%;top:${row * 1.25}rem">${x[2]}</b>`; }).join(''); tm.style.height = '3.7rem'; }
     const bits = [];
     if (t != null) bits.push(`<b style="color:#ffd27a">Terra ${S.fmtH(t)}</b>`);
     if (a != null) bits.push(`<b style="color:#ff9d62">Aqua ${S.fmtH(a)}</b>`);

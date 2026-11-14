@@ -11,7 +11,7 @@
   const grat = d3.geoGraticule10();
 
   const T = { utc: 11, month: 9.2, playing: !reduce, utcTarget: null, monthTarget: null };
-  const V = { lon: -45, lat: 8, R: 300, cx: 0, cy: 0, glass: 0, ring: 0.3, band: 0, ctry: 1, labels: 0 };
+  const V = { lon: -45, lat: 8, R: 300, cx: 0, cy: 0, glass: 0, ring: 0.3, band: 0, ctry: 1, labels: 0, light: 0 };
   let F = { layout: 'hero', lon: -45, lat: 8, auto: true, ring: 0.3 };
   let hover = null, selected = null, dragging = false, userUntil = 0, autoLon = -45, inited = false, running = false, last = performance.now();
   let flagTex = null, pickCb = null, hoverCb = null, bandInfo = () => ({ h: 13.5, c: '125,178,255', label: 'VIIRS' });
@@ -26,14 +26,14 @@
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
     const r = S.rng(77);
-    stars = Array.from({ length: 170 }, () => ({ x: r() * W, y: r() * H, a: 0.1 + r() * 0.4, s: r() < 0.1 ? 1.5 : 0.8 }));
+    stars = Array.from({ length: 300 }, () => ({ x: r() * W, y: r() * H, a: 0.12 + r() * 0.55, s: r() < 0.08 ? 1.7 : r() < 0.3 ? 1.1 : 0.7, ph: r() * 6.3, sp: 0.6 + r() * 1.4 }));
   }
 
   /* where on screen and how big, for each kind of scene */
   function layout(f) {
     const mobile = W < 860;
-    if (f.layout === 'hero') return { R: Math.min(W * 0.36, H * 0.4), cx: W / 2, cy: mobile ? H * 0.36 : H * 0.47 };
-    if (f.layout === 'explore') return { R: Math.min(W * 0.42, H * (mobile ? 0.28 : 0.4)), cx: W / 2, cy: mobile ? H * 0.38 : H * 0.46 };
+    if (f.layout === 'hero') return { R: mobile ? Math.min(W * 0.46, H * 0.3) : Math.min(W * 0.36, H * 0.4), cx: W / 2, cy: mobile ? H * 0.44 : H * 0.47 };
+    if (f.layout === 'explore') return { R: Math.min(W * 0.42, H * (mobile ? 0.28 : 0.36)), cx: W / 2, cy: mobile ? H * 0.38 : H * 0.44 };
     if (f.layout === 'sheet') {
       const spanDeg = Math.max(2, f.span || 20);
       const fit = Math.min(W * (mobile ? 0.9 : 0.5), H * 0.36);
@@ -44,6 +44,8 @@
     return mobile ? { R: Math.min(W * 0.4, H * 0.27) * (f.k || 1), cx: W / 2, cy: H * 0.28 } : { R, cx: W * 0.7, cy: H * 0.5 };
   }
 
+  const tone = (a) => { const l = V.light; return `rgba(${Math.round(243 + (28 - 243) * l)},${Math.round(234 + (21 - 234) * l)},${Math.round(217 + (16 - 217) * l)},${a})`; };
+
   function sunPos() {
     const lon = (12 - T.utc) * 15;
     const doy = (T.month - 1) * 30.4 + 15;
@@ -52,10 +54,10 @@
 
   /* ---- fly-overs: a MODIS satellite and a VIIRS satellite cross the globe every so often, lighting the fires they see ---- */
   const SATS = [
-    { name: 'TERRA', sensor: 'MODIS', res: '1 km pixels', h: S.terraH(2026), dir: -1, w: 5.2, c: '255,198,90' },
-    { name: 'SUOMI NPP', sensor: 'VIIRS', res: '375 m pixels', h: 13.5, dir: 1, w: 6.6, c: '125,178,255' },
-    { name: 'AQUA', sensor: 'MODIS', res: '1 km pixels', h: S.aquaH(2026), dir: 1, w: 5.2, c: '255,106,26' },
-    { name: 'NOAA-20', sensor: 'VIIRS', res: '375 m pixels', h: 13.4, dir: 1, w: 6.6, c: '160,205,255' }
+    { name: 'TERRA', sensor: 'MODIS', res: '1 km pixels', h: S.terraH(2026), dir: -1, w: 5.2, c: '255,198,90', cl: '176,104,6' },
+    { name: 'SUOMI NPP', sensor: 'VIIRS', res: '375 m pixels', h: 13.5, dir: 1, w: 6.6, c: '125,178,255', cl: '29,95,180' },
+    { name: 'AQUA', sensor: 'MODIS', res: '1 km pixels', h: S.aquaH(2026), dir: 1, w: 5.2, c: '255,106,26', cl: '200,60,8' },
+    { name: 'NOAA-20', sensor: 'VIIRS', res: '375 m pixels', h: 13.4, dir: 1, w: 6.6, c: '160,205,255', cl: '40,112,205' }
   ];
   let fly = null, flyIdx = 0, flyWait = 0, nextFly = performance.now() + 4500, curFly = null;
   function startFly(now) {
@@ -74,7 +76,7 @@
   }
   function drawFly() {
     if (!curFly) return;
-    const f = curFly, s = f.s, lam = V.lon * Math.PI / 180, phi = V.lat * Math.PI / 180;
+    const f = curFly, s0 = f.s, s = V.light > 0.5 && s0.cl ? Object.assign({}, s0, { c: s0.cl }) : s0, lam = V.lon * Math.PI / 180, phi = V.lat * Math.PI / 180;
     const vis = (lon, lat) => { const a = lon * Math.PI / 180, b = lat * Math.PI / 180; return Math.cos(b) * Math.cos(a) * Math.cos(phi) * Math.cos(lam) + Math.cos(b) * Math.sin(a) * Math.cos(phi) * Math.sin(lam) + Math.sin(b) * Math.sin(phi) > 0.07; };
     const lo = f.dir < 0 ? f.lat : -84, hi = f.dir < 0 ? 84 : f.lat;
     if (hi - lo > 0.5) {
@@ -95,7 +97,7 @@
     ctx.restore();
     ctx.font = '700 10.5px "Hanken Grotesk", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.globalAlpha = f.a;
     ctx.fillStyle = `rgb(${s.c})`; ctx.fillText(`${s.name} · ${s.sensor}`, p[0] + 20 * k, p[1] - 2);
-    ctx.fillStyle = 'rgba(243,234,217,.8)'; ctx.font = '600 10px "Hanken Grotesk", system-ui, sans-serif'; ctx.fillText(`${s.res} · passes ~${S.fmtH(s.h)} local`, p[0] + 20 * k, p[1] + 11);
+    ctx.fillStyle = tone(0.8); ctx.font = '600 10px "Hanken Grotesk", system-ui, sans-serif'; ctx.fillText(`${s.res} · passes ~${S.fmtH(s.h)} local`, p[0] + 20 * k, p[1] + 11);
     ctx.globalAlpha = 1;
   }
 
@@ -138,6 +140,7 @@
     V.glass += ((F.glass || 0) - V.glass) * 0.07;
     V.ctry += ((F.layout === 'story' ? 0.25 : F.layout === 'sheet' ? 0.0 : 1) - V.ctry) * 0.06;
     V.labels += (((F.layout === 'explore') ? 1 : 0) - V.labels) * 0.08;
+    V.light += (((F.layout === 'story' || F.layout === 'explore') ? 1 : 0) - V.light) * 0.09;
     if (!dragging && now > userUntil) {
       if (F.auto && !reduce) { autoLon += dt * 3.2; V.lon = wrap(autoLon); V.lat += (F.lat - V.lat) * 0.05; }
       else { V.lon = wrap(V.lon + angDiff(F.lon, V.lon) * e); V.lat += (F.lat - V.lat) * e; autoLon = V.lon; }
@@ -149,11 +152,12 @@
     const g1 = 1 - V.glass;
     proj.rotate([-V.lon, -V.lat]).scale(V.R).translate([V.cx, V.cy]);
 
-    for (const s of stars) { ctx.fillStyle = `rgba(243,234,217,${s.a * (0.35 + 0.65 * g1)})`; ctx.fillRect(s.x, s.y, s.s, s.s); }
+    const sl = 1 - V.light;
+    if (sl > 0.02) for (const s of stars) { ctx.fillStyle = `rgba(243,234,217,${s.a * (0.35 + 0.65 * g1) * sl * (0.72 + 0.28 * Math.sin(now / 1000 * s.sp + s.ph))})`; ctx.fillRect(s.x, s.y, s.s, s.s); }
 
     if (g1 > 0.02) { // atmosphere
       const g = ctx.createRadialGradient(V.cx, V.cy, V.R * 0.98, V.cx, V.cy, V.R * 1.22);
-      g.addColorStop(0, `rgba(255,150,80,${0.17 * g1})`); g.addColorStop(0.5, `rgba(120,150,210,${0.05 * g1})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+      g.addColorStop(0, `rgba(255,150,80,${0.17 * g1 * (1 - 0.35 * V.light)})`); g.addColorStop(0.5, `rgba(120,150,210,${0.05 * g1})`); g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(V.cx, V.cy, V.R * 1.22, 0, 7); ctx.fill();
     }
     // ocean + land (turn translucent as we zoom, so the sky shows through)
@@ -178,7 +182,7 @@
     if (DATA.climo) drawFires(DATA.climo);
     drawFly();
 
-    if (g1 > 0.02) { ctx.strokeStyle = `rgba(243,234,217,${0.22 * g1})`; ctx.lineWidth = 1; ctx.beginPath(); path({ type: 'Sphere' }); ctx.stroke(); }
+    if (g1 > 0.02) { ctx.strokeStyle = tone(0.22 * g1); ctx.lineWidth = 1; ctx.beginPath(); path({ type: 'Sphere' }); ctx.stroke(); }
     if (V.ring > 0.03 && g1 > 0.1) drawRing(sunPos()[0], V.ring * g1);
     if (F.pins) drawPins(F.pins);
     if (V.labels > 0.05 && DATA.byId) drawLabels();
@@ -267,7 +271,7 @@
 
   function drawBands() {
     F.bands.forEach((id) => {
-      const b = bandInfo(id);
+      const b = bandInfo(id); if (V.light > 0.5 && b.cl) b.c = b.cl;
       const lon = wrap((b.h - T.utc) * 15);
       const ring = d3.geoGraticule().extent([[lon - 5, -80], [lon + 5, 80]]).outline();
       ctx.fillStyle = `rgba(${b.c},${0.13 * V.band})`; ctx.strokeStyle = `rgba(${b.c},${0.7 * V.band})`; ctx.lineWidth = 1;
@@ -284,15 +288,15 @@
   function drawRing(sLon, a) {
     const r = V.R * 1.1;
     ctx.save(); ctx.translate(V.cx, V.cy);
-    ctx.strokeStyle = `rgba(243,234,217,${0.18 * a})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.stroke();
+    ctx.strokeStyle = tone(0.18 * a); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.stroke();
     ctx.font = '600 10px "Hanken Grotesk", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (let k = 0; k < 24; k++) {
       const off = k * 15 - 180, th = (off * Math.PI) / 180 - Math.PI / 2, major = k % 3 === 0, r1 = r - (major ? 9 : 4);
-      ctx.strokeStyle = `rgba(243,234,217,${(major ? 0.55 : 0.28) * a})`;
+      ctx.strokeStyle = tone((major ? 0.55 : 0.28) * a);
       ctx.beginPath(); ctx.moveTo(Math.cos(th) * r1, Math.sin(th) * r1); ctx.lineTo(Math.cos(th) * r, Math.sin(th) * r); ctx.stroke();
       if (major) {
         const lt = (T.utc + (V.lon + off) / 15 + 48) % 24;
-        ctx.fillStyle = `rgba(243,234,217,${0.62 * a})`;
+        ctx.fillStyle = tone(0.62 * a);
         ctx.fillText(String(Math.round(lt) % 24).padStart(2, '0'), Math.cos(th) * (r + 15), Math.sin(th) * (r + 15));
       }
     }
@@ -307,10 +311,10 @@
     pins.forEach((p) => {
       if (d3.geoDistance([p.lon, p.lat], [V.lon, V.lat]) > 1.35) return;
       const q = proj([p.lon, p.lat]);
-      ctx.strokeStyle = 'rgba(243,234,217,.85)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = tone(0.85); ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(q[0], q[1], 4, 0, 6.3); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(q[0] + 4, q[1] - 4); ctx.lineTo(q[0] + 18, q[1] - 16); ctx.lineTo(q[0] + 24, q[1] - 16); ctx.stroke();
-      ctx.fillStyle = '#f3ead9'; ctx.fillText(p.t, q[0] + 28, q[1] - 12);
+      ctx.fillStyle = tone(1); ctx.fillText(p.t, q[0] + 28, q[1] - 12);
     });
   }
 
@@ -322,7 +326,7 @@
       const span = Math.max(c.bbox[3] - c.bbox[1], (c.bbox[2] - c.bbox[0]) * Math.cos(c.centroid[1] * Math.PI / 180));
       if (span < 15 && c.id !== hover) return;
       const q = proj(c.centroid);
-      ctx.fillStyle = `rgba(243,234,217,${(c.id === hover ? 1 : 0.72) * V.labels})`;
+      ctx.fillStyle = tone((c.id === hover ? 1 : 0.72) * V.labels);
       ctx.fillText(c.name.replace('United States', 'USA').toUpperCase(), q[0], q[1]);
     });
   }
@@ -376,6 +380,26 @@
     unlock() { T.utcTarget = null; T.monthTarget = null; },
     setMonth(m) { T.monthTarget = m; },
     localHourAtCenter() { return (T.utc + V.lon / 15 + 24) % 24; },
-    project: (ll) => proj(ll)
+    project: (ll) => proj(ll),
+    /* typical fire in the cell under a screen point, for the selected month (null when off the globe or over no fire) */
+    heatAt(px, py) {
+      const C = window.DATA && window.DATA.climo, ll = C && proj.invert([px, py]);
+      if (!ll || d3.geoDistance(ll, [V.lon, V.lat]) > 1.5) return null;
+      const la = ll[1] * Math.PI / 180, lo = ll[0] * Math.PI / 180, x = Math.cos(la) * Math.cos(lo), y = Math.cos(la) * Math.sin(lo), z = Math.sin(la);
+      const m0 = Math.floor(T.month - 1) % 12, m1 = (m0 + 1) % 12, f = (T.month - 1) - Math.floor(T.month - 1), cosTol = Math.cos(0.45 * Math.PI / 180);
+      let best = 0;
+      for (let i = 0; i < C.n; i++) {
+        if (C.x[i] * x + C.y[i] * y + C.z[i] * z < cosTol) continue;
+        const v = C.v[i * 12 + m0] * (1 - f) + C.v[i * 12 + m1] * f; if (v > best) best = v;
+      }
+      return best;
+    },
+    /* the hottest cell inside a country box for a calendar month: what 'fully deep orange' means for that country */
+    heatScale(bbox, month) {
+      const C = window.DATA && window.DATA.climo; if (!C) return 1;
+      const m = ((month - 1) % 12 + 12) % 12; let mx = 1;
+      for (let i = 0; i < C.n; i++) { if (C.lon[i] < bbox[0] || C.lon[i] > bbox[2] || C.lat[i] < bbox[1] || C.lat[i] > bbox[3]) continue; const v = C.v[i * 12 + m]; if (v > mx) mx = v; }
+      return mx;
+    }
   };
 })();
