@@ -2,69 +2,74 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SUNDIAL: one fair fire record</title>
-<meta name="description" content="SUNDIAL joins NASA's MODIS and VIIRS fire detections into one burning-activity record, corrected for the time of day each satellite looks.">
+<meta name="description" content="SUNDIAL joins NASA's MODIS and VIIRS fire detections into one burning-activity record, corrected for the time of day each satellite looks. Spin the globe, tap a country.">
+<meta property="og:title" content="SUNDIAL: one fair fire record">
+<meta property="og:description" content="25 years of NASA fire detections on one fair scale. Built for NASA Space Apps 2026.">
 <meta name="theme-color" content="#0a0908">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0908'/%3E%3Ccircle cx='16' cy='18' r='9' fill='none' stroke='%23efe7da' stroke-width='1.6'/%3E%3Cpath d='M16 18 L25 9' stroke='%23ff7a1a' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0908'/%3E%3Ccircle cx='16' cy='18' r='9' fill='none' stroke='%23f3ead9' stroke-width='1.6'/%3E%3Cpath d='M16 18 L25 9' stroke='%23ff6a1a' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/climate-crisis-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="loading">
 
-<a class="skip" href="#explorer">Skip to the explorer</a>
+<a class="skip" href="#explore">Skip to the countries</a>
 
-<header class="top">
-  <a class="mark" href="#hero" aria-label="SUNDIAL, back to top">
-    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="16" cy="18" r="10" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M16 18 L26 8" stroke="var(--ember)" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="18" r="1.6" fill="currentColor"/></svg>
-    <span>SUNDIAL</span>
-  </a>
-  <nav aria-label="Sections">
-    <a href="#cameras">Problem</a>
-    <a href="#swath">Method</a>
-    <a href="#evidence">Evidence</a>
-    <a href="#explorer" class="cta">Explorer</a>
-  </nav>
-</header>
+<div id="loader" role="status" aria-label="Loading SUNDIAL">
+  <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
+    <circle class="l-ring" cx="60" cy="68" r="38" fill="none" stroke="#f3ead9" stroke-width="2.4"/>
+    <path class="l-tick" d="M60 30 V38 M98 68 H90 M22 68 H30 M33 41 L38.5 46.5 M87 41 L81.5 46.5" stroke="#f3ead9" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <path class="l-gnomon" d="M60 68 L88 26" stroke="#ff6a1a" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <circle class="l-dot" cx="60" cy="68" r="4.5" fill="#f3ead9"/>
+  </svg>
+</div>
 
-<!-- The globe lives behind all story sections and re-aims as you scroll -->
+<div id="sky" aria-hidden="true"></div>
 <div id="stage" aria-hidden="true">
   <canvas id="globe"></canvas>
+  <canvas id="embers"></canvas>
   <div class="hud" id="hud">
     <button type="button" id="play" aria-pressed="true" aria-label="Pause time-lapse" tabindex="-1">❚❚</button>
     <div>
       <div class="hud-row"><span id="hud-utc">UTC 00:00</span><span id="hud-month">Jan</span></div>
-      <div class="hud-note">Illustrative hotspot field. Not FIRMS data.</div>
+      <div class="hud-note">Fire: NASA FIRMS, harmonized. Daily rhythm is schematic.</div>
     </div>
   </div>
 </div>
 
+<h1 id="title"><a href="#hero" aria-label="SUNDIAL, back to the top">SUNDIAL</a></h1>
+<div id="gtip" class="gtip" hidden></div>
+
 <main>
 
-<!-- 00 -->
+<!-- 00: the art -->
 <section id="hero" class="scene hero">
-  <div class="hero-copy">
-    <p class="kicker">NASA Space Apps Challenge 2026 · Harmonization of MODIS and VIIRS Hot Spots</p>
-    <h1>Fire follows<br>the <em>clock.</em></h1>
-    <p class="lede">Satellites count more fires in the afternoon than the morning. Two of them have spent five years drifting through the day. SUNDIAL puts 25 years of NASA fire detections on one fair scale.</p>
-    <p class="hero-actions">
-      <a class="btn" href="#cameras">Read the problem</a>
-      <a class="btn ghost" href="#explorer">Skip to the explorer</a>
-    </p>
+  <p class="hero-kicker">NASA Space Apps Challenge 2026 &nbsp;·&nbsp; Harmonization of MODIS and VIIRS Hot Spots</p>
+  <div class="chin">
+    <div class="chin-in">
+      <p class="chin-lede">Satellites count more fires in the afternoon than the morning, and two of them have spent five years drifting through the day. We put <b>25 years of NASA fire detections</b> on one fair scale.</p>
+      <p class="chin-actions">
+        <a class="btn" href="#explore">Look around the globe</a>
+        <a class="btn ghost" href="#cameras">How it works</a>
+      </p>
+    </div>
   </div>
-  <p class="drag-hint"><span aria-hidden="true">⟲</span> Drag the globe. Watch the night side move.</p>
-  <a class="scroll-cue" href="#cameras" aria-label="Scroll to the first section"><span></span></a>
 </section>
 
-<!-- 01 -->
+<!-- 01: look around -->
+<section id="explore" class="scene explore" aria-label="Explore the globe">
+  <p class="explore-hint"><span aria-hidden="true">⟲</span> Drag to look around. Tap a glowing country.</p>
+</section>
+
+<!-- 02 -->
 <section id="cameras" class="scene">
   <div class="col">
     <div class="card">
       <p class="eyebrow"><b>01</b> Problem A · Two cameras</p>
       <h2>Glue two records together and fire <em>seems</em> to jump in 2012.</h2>
-      <p>MODIS has watched since 2000, with 1 km pixels. VIIRS joined in 2012 with 375 m pixels, so it sees many small fires MODIS cannot. Splice the two and burning leaps upward the year VIIRS starts. The jump is the camera, not the fire.</p>
+      <p>MODIS has watched since 2000 with 1 km pixels. VIIRS joined in 2012 with 375 m pixels, so it sees many small fires MODIS cannot, roughly 2 to 8 times more in the daytime. Splice the two and burning leaps up the year VIIRS starts. The jump is the camera, not the fire.</p>
       <dl class="pair">
         <div><dt>MODIS</dt><dd><span class="big">1 km</span> pixels, since 2000</dd></div>
         <div><dt class="v">VIIRS</dt><dd><span class="big">375 m</span> pixels, since 2012</dd></div>
@@ -73,20 +78,20 @@
   </div>
 </section>
 
-<!-- 02 -->
+<!-- 03 -->
 <section id="clock" class="scene">
   <div class="col">
     <div class="card">
       <p class="eyebrow"><b>02</b> Problem B · Fires follow the clock</p>
       <h2>Most fires are lit and spread in the afternoon.</h2>
       <p>They peak near 3 pm local time and are weakest before dawn. So <em>when</em> a satellite looks changes how many fires it counts, even with the exact same camera.</p>
-      <p>Watch the globe: each dot brightens as local afternoon sweeps over it. The ring shows local solar time, which is just UTC plus longitude ÷ 15.</p>
+      <p>Watch the globe: each dot brightens as local afternoon sweeps over it. The ring shows local solar time, which is UTC plus longitude ÷ 15.</p>
       <div class="chart-wrap" id="diurnal-static" role="img" aria-label="Schematic daily fire curve peaking around 3 pm"></div>
     </div>
   </div>
 </section>
 
-<!-- 03 -->
+<!-- 04 -->
 <section id="drift" class="scene tall">
   <div class="col">
     <div class="card sticky">
@@ -95,38 +100,37 @@
       <p>Since about 2020 Terra has crept from a 10:30 am pass toward 9:30, when fewer fires burn. Aqua has gone from 1:30 pm toward 2:30, closer to the peak. VIIRS stays near 1:30 pm, so it is the stable reference.</p>
       <div class="chart-wrap" id="diurnal" role="img" aria-label="Daily fire curve with the pass times of Terra, Aqua and VIIRS for the selected year"></div>
       <label class="scrub">
-        <span class="mono">Year</span>
+        <span>Year</span>
         <input id="year" type="range" min="2000" max="2026.8" step="0.1" value="2000">
-        <output id="year-out" class="mono">2000</output>
+        <output id="year-out">2000</output>
       </label>
       <p id="drift-read" class="readout" aria-live="polite"></p>
-      <p class="aside"><b>Scouting result:</b> Terra alone showed a fire decline of about −53% in Angola while VIIRS showed almost none. That decline is the satellite waking up earlier, not less fire.</p>
+      <p class="aside" id="drift-angola"></p>
     </div>
   </div>
 </section>
 
-<!-- 04 -->
+<!-- 05 -->
 <section id="swath" class="scene">
   <div class="col wide">
     <div class="card">
       <p class="eyebrow"><b>04</b> Method · The swath trick</p>
       <h2>Measure the time-of-day effect from the satellite itself.</h2>
       <p>A MODIS image is a wide strip. Its east edge is seen about 40 minutes later in local solar time than its west edge. Compare east and west pixels of the same size and the only thing that differs is the clock. The difference in counts gives the slope: how fast detections rise per hour.</p>
-      <figure class="swath-fig" id="swath-fig" aria-label="Diagram of one satellite pass. West edge pixel is seen at 09:10, east edge pixel at 09:50, with the same pixel size.">
-      </figure>
-      <p class="small">The two edges also see different lighting. Terra and Aqua fly in opposite directions, so that error flips sign; adding the two slopes cancels it: <span class="mono">b<sub>adj</sub> = b<sub>Terra</sub> + b<sub>Aqua</sub></span>.</p>
+      <figure class="swath-fig" id="swath-fig" aria-label="Diagram of one satellite pass. West edge pixel is seen at 09:10, east edge pixel at 09:50, with the same pixel size."></figure>
+      <p class="small">The two edges also see different lighting. Terra and Aqua fly in opposite directions, so that error flips sign. Adding the two slopes cancels it: <span class="nowrap">b<sub>adj</sub> = b<sub>Terra</sub> + b<sub>Aqua</sub></span>.</p>
     </div>
     <div class="card steps">
       <ol>
-        <li><b>Convert the camera.</b> From 2012–2019 both sensors fly and the drift has not started. Fit <i>k</i>, "for every fire MODIS saw, VIIRS saw <i>k</i>", per region × season × day/night.</li>
-        <li><b>Measure the clock.</b> Take the swath slope <i>b</i> each year, so the correction follows the drift.</li>
+        <li><b>Convert the camera.</b> From 2012 to 2019 both sensors fly and the drift has not started. Fit <i>k</i>, "for every fire MODIS saw, VIIRS saw <i>k</i>", per country, season and day or night.</li>
+        <li><b>Measure the clock.</b> Take the swath slope <i>b</i>, so the correction follows each satellite's drifting pass time.</li>
         <li><b>Apply it month by month.</b> Undo the shift back to the old 10:30 pass, then convert to VIIRS units.</li>
       </ol>
       <p class="formula" aria-label="n harmonized equals k times n Terra times e to the minus b times h minus 10.5">
         n<sub>harm</sub> = <i>k</i> × n<sub>Terra</sub> × e<sup>−<i>b</i>(<i>h</i> − 10.5)</sup>
       </p>
       <form class="calc" id="calc" onsubmit="return false">
-        <p class="mono calc-title">Worked example · try your own numbers</p>
+        <p class="calc-title">Worked example · try your own numbers</p>
         <div class="calc-grid">
           <label>Terra count<input id="c-n" type="number" value="1000" min="0" step="1"></label>
           <label>Pass time h (local)<input id="c-h" type="number" value="9.67" min="8" max="12" step="0.01"></label>
@@ -134,100 +138,63 @@
           <label>Slope b (per hr)<input id="c-b" type="number" value="0.28" min="0" max="1" step="0.01"></label>
         </div>
         <p class="calc-out" aria-live="polite"><span id="c-mult">×1.26</span> time correction · <span id="c-res">≈ 9,600</span> VIIRS-equivalent fires</p>
-        <p class="tiny">Round, made-up numbers from the team brief. Terra at 09:40 misses about 21% of the fires it saw at 10:30.</p>
+        <p class="tiny">Round, made-up numbers for illustration. The real <i>k</i> and <i>b</i> are fitted per country.</p>
       </form>
     </div>
   </div>
 </section>
 
-<!-- 05 -->
+<!-- 06 -->
 <section id="evidence" class="scene">
   <div class="col wide">
     <div class="card">
-      <p class="eyebrow"><b>05</b> Evidence · What the scouting run showed</p>
-      <h2>It worked on four regions it had never seen. It also failed twice.</h2>
-      <p>"Gap closed" is the share of the fake difference between drifting Terra and steady VIIRS that the correction removed. 100% is perfect, 0% did nothing. These numbers come from an AI-built scouting run and are <b>not final</b>: the team rebuilds every one before showing it.</p>
+      <p class="eyebrow"><b>05</b> Evidence · Does the fix work?</p>
+      <h2 id="ev-title">We test it on years the method never saw.</h2>
+      <p>Fit the clock correction on data from before 2020 only. Correct Terra's 2021 to 2025 counts. Check against VIIRS, which never drifted. "Gap closed" is the share of Terra's fake trend the correction removed: 100% is perfect, 0% did nothing, below 0% made it worse.</p>
       <ul class="board" id="board"></ul>
-      <p class="tiny">Rules we follow: write the pass/fail rule before running a test, always run a placebo, keep the failures in the story.</p>
+      <p class="tiny" id="ev-note"></p>
     </div>
   </div>
 </section>
 
 </main>
 
-<!-- 06: the working tool. Opaque, stage hidden. -->
-<section id="explorer" class="explorer" aria-labelledby="ex-title">
-  <div class="wrap">
-    <header class="ex-head">
-      <p class="eyebrow"><b>06</b> Explorer</p>
-      <h2 id="ex-title">Pick an area. Get its fire calendar.</h2>
-      <p class="demo-banner" role="note"><b>Demo data.</b> This page shows the interface running on a synthetic fire field shaped by the method above. Real numbers arrive when the FIRMS pipeline and API are plugged in. Every CSV row is marked <span class="mono">synthetic_demo</span>.</p>
+<aside id="tray" class="tray" aria-label="Countries with data">
+  <h2 id="places" class="sr">Countries with data</h2>
+  <div class="tray-row" id="tray-row"></div>
+</aside>
+
+<nav id="dock" class="dock" aria-label="Sections">
+  <a href="#explore" data-for="explore"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17"/></svg><span>Globe</span></a>
+  <a href="#cameras" data-for="cameras"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 12 17 6.5M12 6v1.5M18 12h-1.5M6 12h1.5"/></svg><span>Problem</span></a>
+  <a href="#swath" data-for="swath"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c4-9 14-9 18 0M3 17h18"/><circle cx="8" cy="12" r="1.2"/><circle cx="16" cy="12" r="1.2"/></svg><span>Method</span></a>
+  <a href="#evidence" data-for="evidence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg><span>Evidence</span></a>
+</nav>
+
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="sheet-name">
+  <button type="button" class="sheet-back" id="sheet-back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Globe</span></button>
+  <div class="sheet-bar" id="sheet-bar" aria-hidden="true"><span id="bar-name"></span><span id="bar-val"></span></div>
+  <div class="sheet-scroll" id="sheet-scroll">
+    <header class="sheet-head">
+      <h2 id="sheet-name"></h2>
+      <p class="sheet-num" id="sheet-num"></p>
+      <p class="sheet-cond" id="sheet-cond"></p>
+      <p class="sheet-hl" id="sheet-hl"></p>
+      <div class="stepper" role="group" aria-label="Change month">
+        <button type="button" id="m-prev" aria-label="Previous month">‹</button>
+        <span id="m-label"></span>
+        <button type="button" id="m-next" aria-label="Next month">›</button>
+      </div>
     </header>
-
-    <div class="pick">
-      <div class="pick-map">
-        <canvas id="map" aria-label="Map. Drag to draw a box around an area."></canvas>
-        <p class="map-hint">Drag on the map to draw a box</p>
-      </div>
-      <div class="pick-side">
-        <label class="field">Country or region
-          <select id="preset"></select>
-        </label>
-        <fieldset class="bbox">
-          <legend>Box in degrees</legend>
-          <label>West<input id="b-w" type="number" step="0.1" min="-180" max="180"></label>
-          <label>South<input id="b-s" type="number" step="0.1" min="-90" max="90"></label>
-          <label>East<input id="b-e" type="number" step="0.1" min="-180" max="180"></label>
-          <label>North<input id="b-n" type="number" step="0.1" min="-90" max="90"></label>
-        </fieldset>
-        <dl class="stats" id="stats"></dl>
-      </div>
-    </div>
-
-    <div class="block">
-      <div class="block-head">
-        <h3>Burning calendar</h3>
-        <p class="tiny">Harmonized detections per month, VIIRS units. ▲ unusually high · ▼ unusually low for that calendar month.</p>
-      </div>
-      <div class="cal-scroll"><div id="cal" class="cal" role="grid" aria-label="Burning calendar, months by years"></div></div>
-      <div class="legend" aria-hidden="true"><span>fewer</span><i></i><span>more</span></div>
-    </div>
-
-    <div class="block">
-      <div class="block-head">
-        <h3>The same record, before and after</h3>
-        <p class="tiny">Drag the divider (or focus it and use the arrow keys). Left of it: the naive record. Right of it: harmonized.</p>
-      </div>
-      <div class="series-wrap" id="series-wrap">
-        <svg id="series" role="img" aria-label="Monthly fire series. Left of the divider the naive record, right of it the harmonized record."></svg>
-        <div class="ba-labels" aria-hidden="true"><span>Naive</span><span>Harmonized</span></div>
-      </div>
-    </div>
-
-    <div class="block two">
-      <div>
-        <h3>Unusual months</h3>
-        <ol id="anoms" class="anoms"></ol>
-      </div>
-      <div>
-        <h3>Download</h3>
-        <div class="dl">
-          <button type="button" class="btn" id="dl-month">Monthly table (CSV)</button>
-          <button type="button" class="btn ghost" id="dl-hot">Calibrated hotspots (CSV)</button>
-          <a class="btn ghost" href="https://firms.modaps.eosdis.nasa.gov/download/" target="_blank" rel="noopener">NASA FIRMS raw archive ↗</a>
-          <button type="button" class="btn ghost" id="copy">Copy link to this view</button>
-        </div>
-        <p class="tiny">Monthly table: raw MODIS count, raw VIIRS count, harmonized count, uncertainty, anomaly score, satellite pass time. Hotspot file: each detection with its <span class="mono">harmonized_weight</span>.</p>
-        <p id="toast" class="toast" role="status" aria-live="polite"></p>
-      </div>
-    </div>
+    <div class="cards" id="cards"></div>
+    <p class="sheet-foot">Fire detections: NASA FIRMS (MODIS and VIIRS). Harmonization by SUNDIAL. Counts are in VIIRS-equivalent detections per month.</p>
   </div>
-</section>
+</div>
 
 <section class="closing" id="why">
   <div class="wrap grid3">
     <div>
-      <p class="eyebrow"><b>07</b> Why now</p>
+      <p class="eyebrow"><b>06</b> Why now</p>
       <h2>The 25-year record is ending.</h2>
       <p>Suomi NPP stopped sending data on 2 November 2026. Terra and Aqua are expected to shut down around late 2026 or early 2027. Anyone who wants one long fire record has to harmonize it now.</p>
     </div>
@@ -239,7 +206,7 @@
     <div>
       <p class="eyebrow">Honest notes</p>
       <h2>What we do not claim.</h2>
-      <p>Add Terra and Aqua together and their drifts mostly cancel, leaving only −1% to +3% error. The fix matters most for single-satellite users and the Terra-only years of 2000–2002. AI helped with early scouting and with this site's code; we rebuild the analysis and check every source ourselves.</p>
+      <p>Add Terra and Aqua together and their drifts mostly cancel. The fix matters most for single-satellite users and the Terra-only years of 2000 to 2002. From 2012 the harmonized record is VIIRS itself. The daily curve on the globe is a schematic. AI helped write this site's code; we rebuild the analysis and check every source ourselves.</p>
     </div>
   </div>
   <footer class="foot wrap">
@@ -247,13 +214,13 @@
   </footer>
 </section>
 
-<div id="tip" class="tip" role="tooltip" hidden></div>
-
 <script src="vendor/d3.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
 <script src="vendor/world.js"></script>
 <script src="js/core.js"></script>
-<script src="js/story.js"></script>
-<script src="js/explorer.js"></script>
+<script src="js/sky.js"></script>
+<script src="js/data.js"></script>
+<script src="js/globe.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
