@@ -119,6 +119,7 @@
       hudAt = now;
       $('#hud-utc').textContent = 'UTC ' + S.fmtH(G.T.utc);
       $('#hud-month').textContent = MON[Math.floor(G.T.month - 1 + 12) % 12];
+      updateLens();
     }
     requestAnimationFrame(frame);
   }
@@ -129,6 +130,8 @@
   const closing = $('#why');
   function onScroll() {
     placeTitle();
+    const scrollMax = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+    $('#scroll-meter').style.transform = `scaleX(${clamp(scrollY / scrollMax, 0, 1)})`;
     if (st.sheetOpen) return;
     const mid = innerHeight * 0.5;
     let pick = 'hero';
@@ -145,6 +148,20 @@
   }
   addEventListener('scroll', onScroll, { passive: true });
   addEventListener('resize', () => { layoutTitle(); onScroll(); });
+
+  /* ============ orbit lens: make local solar time tangible ============ */
+  const lensLon = $('#lens-lon');
+  function updateLens() {
+    const lon = +lensLon.value;
+    const h = ((G.T.utc + lon / 15) % 24 + 24) % 24;
+    const activity = S.D(h);
+    $('#lens-lon-out').textContent = `${Math.abs(lon)}°${lon < 0 ? 'W' : lon > 0 ? 'E' : ''}`;
+    $('#lens-time').textContent = S.fmtH(h);
+    $('#lens-activity').textContent = activity > .82 ? 'Near peak' : activity > .5 ? 'Rising' : activity > .22 ? 'Low' : 'Quiet';
+    $('#lens-dot').style.left = `${Math.round(activity * 100)}%`;
+  }
+  lensLon.addEventListener('input', updateLens);
+  updateLens();
 
   /* ============ story figures ============ */
   const D3 = window.d3;
@@ -270,7 +287,11 @@
 
   async function openPlace(id, opts) {
     opts = opts || {};
-    const s = await DATA.loadSeries(id), c = DATA.byId[id];
+    const c = DATA.byId[id];
+    if (!c) return;
+    let s;
+    try { s = await DATA.loadSeries(id); }
+    catch (e) { console.error(e); $('.explore-hint').textContent = 'That country record could not be loaded. Please try again.'; return; }
     Object.assign(sh, { id, s, c, idx: opts.idx != null ? opts.idx : s.months.length - 1, hour: hourAt(c.centroid[0]), mode: 'camera', div: 0.5, playing: false });
     st.sheetOpen = true; document.body.classList.add('sheet-open');
     const b = c.bbox, lat = (b[1] + b[3]) / 2, lon = (b[0] + b[2]) / 2;

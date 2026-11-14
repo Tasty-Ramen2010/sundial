@@ -17,6 +17,13 @@
 
 <a class="skip" href="#explore">Skip to the globe</a>
 
+<header class="mission-bar" aria-label="Project identity">
+  <a class="mission-mark" href="#hero" aria-label="SUNDIAL home"><span></span>SUNDIAL</a>
+  <p>NASA Space Apps 2026 <i aria-hidden="true"></i> Earth observation</p>
+  <a class="mission-data" href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noreferrer">NASA FIRMS data ↗</a>
+</header>
+<div class="scroll-meter" aria-hidden="true"><span id="scroll-meter"></span></div>
+
 <div id="loader" role="status" aria-label="Loading SUNDIAL">
   <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
     <circle class="l-ring" cx="60" cy="68" r="38" fill="none" stroke="#f3ead9" stroke-width="2.4"/>
@@ -49,6 +56,11 @@
   <div class="chin">
     <div class="chin-in">
       <p class="chin-lede">Satellites count more fires in the afternoon than the morning, and two of them have spent five years drifting through the day. We put <b>25 years of NASA fire detections</b> on one fair scale.</p>
+      <ul class="hero-stats" aria-label="Project highlights">
+        <li><b>2000–2026</b><span>one continuous record</span></li>
+        <li><b>4 satellites</b><span>one comparable scale</span></li>
+        <li><b>12 countries</b><span>validation in the open</span></li>
+      </ul>
       <p class="chin-actions">
         <a class="btn" href="#explore">Look around the globe</a>
         <a class="btn ghost" href="#cameras">How it works</a>
@@ -60,6 +72,17 @@
 <!-- 01: look around -->
 <section id="explore" class="scene explore" aria-label="Explore the globe">
   <p class="explore-hint"><span aria-hidden="true">⟲</span> Drag to look around. Tap a glowing country.</p>
+  <aside class="orbit-lens" aria-labelledby="lens-title">
+    <div class="lens-head"><p class="eyebrow">Live experiment</p><h2 id="lens-title">Orbit lens</h2></div>
+    <p class="lens-copy">Move east or west. The same UTC moment becomes a different local fire hour.</p>
+    <label for="lens-lon">Longitude <output id="lens-lon-out" for="lens-lon">0°</output></label>
+    <input id="lens-lon" type="range" min="-180" max="180" step="1" value="0">
+    <div class="lens-readout" aria-live="polite">
+      <div><span>Local solar time</span><strong id="lens-time">12:00</strong></div>
+      <div><span>Expected activity</span><strong id="lens-activity">Peak</strong></div>
+    </div>
+    <div class="lens-scale" aria-hidden="true"><span>quiet</span><i><b id="lens-dot"></b></i><span>peak</span></div>
+  </aside>
 </section>
 
 <!-- 02 -->
@@ -207,7 +230,8 @@
     </div>
   </div>
   <footer class="foot wrap">
-    <p>SUNDIAL · Made for the NASA International Space Apps Challenge 2026 · Data: NASA FIRMS · Not affiliated with or endorsed by NASA.</p>
+    <p>SUNDIAL · Made for the NASA International Space Apps Challenge 2026 · Data: <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noreferrer">NASA FIRMS</a> · Not affiliated with or endorsed by NASA.</p>
+    <a href="#hero">Back to orbit ↑</a>
   </footer>
 </section>
 
