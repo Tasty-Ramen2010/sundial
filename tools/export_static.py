@@ -4,7 +4,8 @@ Run from the team repo (Nasa_Space_App_Test) with its venv active:
     python /path/to/sundial/tools/export_static.py /path/to/sundial/data
 Everything written here is computed by the team's pipeline from NASA FIRMS; nothing is invented.
 """
-import json, sys, shutil, math
+import csv, json, os, sys, shutil, math
+from datetime import datetime, timezone
 from pathlib import Path
 import numpy as np
 import polars as pl
@@ -55,6 +56,16 @@ for c in SHOWN:
                               "tier": q.get("tier"), "calib_n": q.get("calibration_detections")})
 tot = dump(out / "meta.json", meta)
 
+# Preserve known provenance without guessing NASA product versions or interval
+# construction. Teams can supply verified metadata with this optional manifest.
+provenance_path = os.environ.get("SUNDIAL_PROVENANCE_FILE")
+provenance = json.loads(Path(provenance_path).read_text()) if provenance_path else {
+    "product_versions": None, "uncertainty_method": None,
+    "analysis_repository": None, "analysis_revision": None,
+}
+provenance["exported_at"] = datetime.now(timezone.utc).isoformat()
+tot += dump(out / "provenance.json", provenance)
+
 for c in SHOWN:
     s = B.series(f"country:{c['id']}")
     tot += dump(out / "series" / f"{c['id']}.json", s)
@@ -77,3 +88,32 @@ rows = [[round((gy + 0.5) * 0.5, 2), round((gx + 0.5) * 0.5, 2), vals] for (gy, 
 rows.sort(key=lambda r: -max(r[2]))
 tot += dump(out / "climo.json", {"cell_deg": 0.5, "years": "2012-2025", "unit": "harmonized detections per month (mean)", "cells": rows})
 print("cells kept:", len(rows), "| total bytes written:", tot // 1024, "KB")
+
+# Regional observations must come from the unaveraged monthly grid. Coverage
+# cannot be inferred from detections: require an explicit observed-area manifest.
+manifest_file = os.environ.get("SUNDIAL_REGIONAL_MANIFEST")
+if manifest_file:
+    manifest = json.loads(Path(manifest_file).read_text())
+    w, s, e, n = manifest["coverage_bbox"]
+    observed = manifest["observed_months"]
+    if not (-180 <= w < e <= 180 and -90 <= s < n <= 90):
+        raise ValueError("Invalid regional coverage_bbox")
+    if not observed or not manifest.get("provenance") or manifest.get("missing_rows") != "zero_within_coverage":
+        raise ValueError("Regional manifest needs observed_months, provenance and missing_rows=zero_within_coverage")
+    regional = B.GLOBE.with_columns(
+        ((pl.col("gy") + 0.5) * 0.5).alias("latitude"),
+        ((pl.col("gx") + 0.5) * 0.5).alias("longitude"),
+    ).filter(
+        pl.col("ym").is_in(observed) &
+        (pl.col("latitude") >= s) & (pl.col("latitude") < n) &
+        (pl.col("longitude") >= w) & (pl.col("longitude") < e)
+    ).group_by("latitude", "longitude", "ym").agg(pl.col("harm").sum().alias("value"))
+    with (out / "regional-history.csv").open("w", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["latitude", "longitude", "month", "harmonized_detections"])
+        for lat, lon, ym, value in regional.select("latitude", "longitude", "ym", "value").iter_rows():
+            if value is None or not math.isfinite(value) or value < 0:
+                raise ValueError(f"Invalid regional count at {lat},{lon},{ym}")
+            writer.writerow([lat, lon, ym, value])
+    dump(out / "regional-history.meta.json", manifest)
+    print("regional observations exported:", regional.height)

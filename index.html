@@ -15,7 +15,7 @@
 </head>
 <body class="loading">
 
-<a class="skip" href="#cameras">Skip to the story</a>
+<a class="skip" href="#explore">Skip to the calendar explorer</a>
 
 <div id="loader" role="status" aria-label="Loading SUNDIAL">
   <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
@@ -25,6 +25,7 @@
     <circle class="l-dot" cx="60" cy="68" r="4.5" fill="#f3ead9"/>
   </svg>
 </div>
+<p id="globe-caption" class="globe-caption">Globe: 2012–2025 seasonal average · illustrative daily cycle</p>
 
 <div id="sky" aria-hidden="true"></div>
 <div id="glow" aria-hidden="true"></div>
@@ -41,7 +42,7 @@
 <!-- 00: the art -->
 <section id="hero" class="scene hero">
   <p class="hero-line">Satellites count fires differently depending on the time of day. We corrected for that, so 25 years of fire can finally be compared.</p>
-  <a class="scroll-cue" href="#intro">Scroll <span aria-hidden="true">↓</span></a>
+  <a class="scroll-cue btn" href="#explore">Explore the burning calendar <span aria-hidden="true">↓</span></a>
   <div class="chin" aria-hidden="true"></div>
 </section>
 
@@ -50,8 +51,18 @@
     <p class="intro-kicker">NASA Space Apps Challenge 2026 · Making two fire-watching satellite families agree (MODIS and VIIRS)</p>
     <p class="intro-lede">Satellites count more fires in the afternoon than the morning, and two of them have spent five years drifting through the day. We rebuilt <b>25 years of NASA fire detections</b> so every year can be compared with every other, like for like.</p>
     <p class="chin-actions">
-      <a class="btn" href="#cameras">See how it works</a>
+      <a class="btn" href="#explore">Explore the burning calendar</a>
+      <button class="btn ghost" id="try-angola" type="button" disabled>Try Angola</button>
+      <a class="btn ghost" href="#cameras">See how it works</a>
     </p>
+    <form class="country-search" id="explore" aria-label="Find a country’s burning calendar">
+      <label for="country-search">Where would you like to explore?</label>
+      <div class="country-search-row"><input id="country-search" type="search" list="country-options" placeholder="Search a country, e.g. Angola" autocomplete="off" aria-describedby="country-search-status" required disabled><button class="btn" id="country-open" type="submit" disabled>Open calendar</button></div>
+      <datalist id="country-options"></datalist>
+      <p id="country-search-status" role="status" aria-live="polite">Loading available countries…</p>
+    </form>
+    <p class="intro-coverage" data-record-coverage>Loading observation dates…</p>
+    <p class="intro-source-link"><a href="#sources">Sources, methodology &amp; limitations</a></p>
     <p class="explore-hint"><span aria-hidden="true">⟲</span> Loading the globe…</p>
   </div>
 </section>
@@ -179,12 +190,15 @@
   <div class="sheet-bar" id="sheet-bar" aria-hidden="true"><span id="bar-name"></span><span id="bar-val"></span></div>
   <div class="sheet-scroll" id="sheet-scroll">
     <header class="sheet-head">
+      <p class="sheet-map-note">Map: <span data-globe-years>2012–2025</span> seasonal average · daily cycle is illustrative</p>
       <h2 id="sheet-name"></h2>
       <p class="tier" id="tier"></p>
       <label class="switch"><span class="sr">Switch country</span><select id="switch"></select></label>
       <p class="sheet-num" id="sheet-num"></p>
       <p class="sheet-cond" id="sheet-cond"></p>
       <p class="sheet-hl" id="sheet-hl"></p>
+      <p class="sheet-coverage" id="sheet-coverage"></p>
+      <p class="sheet-source" id="sheet-source"></p>
       <div class="stepper" role="group" aria-label="Change month">
         <button type="button" id="m-prev" aria-label="Previous month">‹</button>
         <span id="m-label"></span>
@@ -192,7 +206,7 @@
       </div>
     </header>
     <div class="cards" id="cards"></div>
-    <p class="sheet-foot">Fire detections: NASA FIRMS (MODIS and VIIRS). Harmonization by SUNDIAL. Counts are in VIIRS-equivalent detections per month.</p>
+    <p class="sheet-foot">Fire detections: NASA FIRMS (MODIS and VIIRS). Harmonization by SUNDIAL. Counts are in VIIRS-equivalent detections per month. <a href="#sheet-methodology">Sources &amp; methodology</a></p>
   </div>
 </div>
 
@@ -214,10 +228,28 @@
       <p>Add Terra and Aqua together and their drifts mostly cancel. The fix matters most for single-satellite users and the Terra-only years of 2000 to 2002. From 2012 the harmonized record is VIIRS itself. The daily curve on the globe is a schematic. AI helped write this site's code; we rebuild the analysis and check every source ourselves.</p>
     </div>
   </div>
+  <div id="sources" class="wrap sources-panel">
+    <details><summary>Sources, methodology &amp; limitations</summary><div class="sources-content"></div></details>
+  </div>
   <footer class="foot wrap">
     <p>SUNDIAL · Made for the NASA International Space Apps Challenge 2026 · Data: NASA FIRMS · Not affiliated with or endorsed by NASA.</p>
   </footer>
 </section>
+
+<template id="sources-template">
+  <dl class="source-facts">
+    <div><dt>Observations</dt><dd data-record-coverage>Loading coverage…</dd></div>
+    <div><dt>NASA inputs</dt><dd>MODIS active-fire detections from Terra and Aqua (nominal 1 km); VIIRS active-fire detections from Suomi NPP and NOAA-20 (nominal 375 m). These are satellite detections, not counts of separate fire incidents or burned area.</dd></div>
+    <div><dt>Products &amp; versions</dt><dd data-product-versions>Exact product collections and processing versions were not recorded in this export.</dd></div>
+    <div><dt>Project method</dt><dd>MODIS counts are converted to a VIIRS-equivalent scale using the 2012–2019 sensor overlap and a correction for drifting overpass times. Calibration can be fitted per country, blended, or borrowed. The monthly download identifies which source contributes to each month.</dd></div>
+    <div><dt>Validation</dt><dd>The project tests sensor conversion on held-out 2016–2019 data and the drift correction against VIIRS during 2021–2025 using pre-2020 fits. Country results include failures; country validation does not establish regional accuracy.</dd></div>
+    <div><dt>Seasonal baseline</dt><dd>Fire-season summaries use 2012–2025 same-month averages. Selected-month comparisons exclude the selected year and require at least three other years. The existing calendar’s ▲/▼ flags use the supplied anomaly scores (|z| ≥ 2), a separate measure.</dd></div>
+    <div><dt>Map &amp; regional estimates</dt><dd>The globe and regional profile show a <span data-globe-years>2012–2025</span> seasonal average, on a 0.5° grid, with an illustrative daily cycle. They do not show observations from the selected year. Cells with a peak monthly average below four detections are omitted; regional totals are approximate. Regional historical comparisons require separately loaded monthly observations.</dd></div>
+    <div><dt>Uncertainty</dt><dd data-uncertainty-method>The country export supplies lower and upper bounds labeled as a 95% band, but its interval calculation was not supplied. Treat the bands as unverified; they are not regional confidence intervals.</dd></div>
+    <div><dt>Reproducibility</dt><dd>This build includes the website, a local regional server and an <a href="tools/export_static.py" target="_blank" rel="noopener">export script</a>. <a href="https://github.com/Tasty-Ramen2010/sundial" target="_blank" rel="noopener">Project repository</a>. The upstream calibration pipeline and its revision are <span data-analysis-revision>not identified in this export</span>. <span data-export-date>Export timestamp was not recorded.</span></dd></div>
+  </dl>
+  <p class="source-links"><a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener">NASA FIRMS</a> · <a href="https://firms.modaps.eosdis.nasa.gov/download/" target="_blank" rel="noopener">Active-fire archive</a> · <a href="https://firms.modaps.eosdis.nasa.gov/content/active_fire/" target="_blank" rel="noopener">NASA data documentation</a></p>
+</template>
 
 <script src="vendor/d3.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
@@ -225,6 +257,9 @@
 <script src="js/core.js"></script>
 <script src="js/sky.js"></script>
 <script src="js/data.js"></script>
+<script src="js/season.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/regions.js"></script>
 <script src="js/globe.js"></script>
 <script src="js/app.js"></script>
 </body>

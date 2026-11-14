@@ -1,0 +1,29 @@
+SUNDIAL — changes made on November 14, 2026
+
+Regional fire-season explorer
+Draw a rectangle on a country map or enter coordinates to view that area's
+typical burning months. Country summaries show peak months, the selected
+month's difference from its baseline, and the calibration basis. Shared links
+preserve the country, month and selected box.
+
+Local backend
+Added a Python server with a regional-history endpoint and validated import
+of harmonized monthly grid records. Start with: python3 server.py --port 8000.
+The checked-in spatial data supports seasonal averages only. Regional historical
+calendars and departures become available when real monthly records are loaded;
+they are not estimated from country totals.
+
+Faster access
+Added a prominent calendar entry, searchable country suggestions, and a
+one-click Angola example. Search opens the selected country's calendar directly.
+Calendar shortcuts lead to the season summary, regional picker and methodology.
+
+Sources and dates
+Added NASA FIRMS links, coverage dates, calibration and validation descriptions,
+baseline definitions, and uncertainty limitations. The page now distinguishes
+historical observations (November 2000–December 2025) from the globe's 2012–2025
+seasonal average and illustrative daily cycle. Selected-month source labels
+identify MODIS or VIIRS. Exact product versions, upstream analysis revision and
+interval construction remain explicitly unrecorded in this export.
+
+Technical details and data-import instructions: README.md.

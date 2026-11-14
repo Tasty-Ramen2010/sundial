@@ -358,6 +358,40 @@ body.ink-title:not(.sheet-open) #title.docked a { background: rgba(243, 234, 217
 
 .sheet-hl { max-width: 40rem; }
 .sheet-cond { opacity: 0.9; }
+.season-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2rem; margin: 0.7rem 0 1.1rem; }
+.season-metrics span, .season-metrics small { display: block; font-size: 0.77rem; line-height: 1.5; color: #d3cabb; }
+.season-metrics strong { display: block; font-size: clamp(1.1rem, 2.5vw, 1.55rem); font-weight: 500; line-height: 1.25; color: var(--sun); margin: 0.4rem 0; }
+.season-bars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0.35rem; height: 9rem; padding: 1.6rem 0 1.5rem; margin-top: 1rem; }
+.season-month { position: relative; display: flex; align-items: end; justify-content: center; border-bottom: 1px solid var(--glassLine); }
+.season-month i { width: 65%; background: linear-gradient(0deg, #ff6a1a, #ffc65a); border-radius: 4px 4px 0 0; min-height: 1px; }
+.season-month span { position: absolute; top: -1.3rem; font-size: 0.64rem; color: var(--dim); }
+.season-month b { position: absolute; bottom: -1.4rem; font-size: 0.7rem; font-weight: 500; }
+.season-month.selected b { color: var(--sun); text-decoration: underline; text-underline-offset: 4px; }
+.region-map { display: block; width: 100%; height: auto; aspect-ratio: 640 / 280; background: #0e141b; border: 1px solid var(--glassLine); border-radius: 12px; overflow: hidden; touch-action: none; cursor: crosshair; }
+.region-land { fill: #242e38; stroke: #59616a; stroke-width: 0.6; }
+.region-country { fill: #394044; stroke: #f3ead9; stroke-width: 1; }
+.region-selection { fill: rgba(255, 106, 26, 0.25); stroke: #ffc65a; stroke-width: 2; pointer-events: none; }
+.region-map-label { fill: #f3ead9; font: 14px var(--sans); paint-order: stroke; stroke: #0e141b; stroke-width: 4px; pointer-events: none; }
+.region-coordinates { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; margin: 0.9rem 0; }
+.region-coordinates label { font-size: 0.8rem; }
+.region-coordinates input { display: block; width: 100%; margin-top: 0.3rem; padding: 0.65rem; border-radius: 8px; border: 1px solid var(--glassLine); background: #15100e; color: var(--bone); font: inherit; }
+.region-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.region-actions .btn, #region-download { font-size: 0.8rem; padding: 0.65rem 1rem; }
+#region-bounds { font-size: 0.75rem; color: var(--dim); }
+.gcard .region-error { color: var(--bad); margin-top: 0.5rem; }
+#region-results h4 { margin: 1.5rem 0 0.7rem; font-size: 1.1rem; font-weight: 500; }
+.gcard .region-availability { border-left: 2px solid var(--sun); padding-left: 0.8rem; margin-top: 1rem; font-size: 0.85rem; color: #e5dac7; }
+.region-history-scroll { overflow-x: auto; margin: 1rem 0; }
+.region-history { border-collapse: collapse; width: 100%; text-align: left; font-size: 0.78rem; margin-bottom: 1rem; }
+.region-history th, .region-history td { padding: 0.6rem; border-bottom: 1px solid var(--glassLine); white-space: nowrap; }
+.region-history caption { text-align: left; margin-bottom: 0.6rem; color: var(--dim); }
+@media (max-width: 640px) {
+  .season-metrics { grid-template-columns: 1fr; gap: 0.9rem; }
+  .region-coordinates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .season-month span { font-size: 0.55rem; writing-mode: vertical-rl; top: -2.3rem; }
+  .season-bars { margin-top: 2rem; }
+  .season-month b { font-size: 0.62rem; }
+}
 .tod-marks { min-height: 3.7rem; }
 
 /* title is an inverse again: cream drawn with 'difference' flips against whatever is behind it */
@@ -366,3 +400,43 @@ body.ink-title:not(.sheet-open) #title.docked a { background: rgba(243, 234, 217
 #title.docked a, body.ink-title:not(.sheet-open) #title.docked a { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; }
 body.sheet-open #title { text-shadow: none; }
 .intro { min-height: 0; padding-bottom: clamp(4rem, 9vw, 6rem); }
+
+/* Direct entry, provenance and coverage labels. */
+.scroll-cue.btn { text-transform: none; letter-spacing: 0; color: #1c0c03; opacity: 1; white-space: nowrap; font-size: 0.85rem; }
+.scroll-cue.btn:hover { transform: translate(-50%, -1px); }
+.country-search { margin: 2rem auto 1rem; padding: 1.3rem; border: 1px solid rgba(28, 21, 16, 0.2); border-radius: 18px; background: rgba(255, 255, 255, 0.3); text-align: left; scroll-margin-top: 6rem; }
+.country-search label { display: block; font-weight: 600; font-size: 1rem; margin-bottom: 0.7rem; }
+.country-search-row { display: flex; gap: 0.5rem; }
+.country-search input { flex: 1; min-width: 0; width: 100%; border: 1px solid #928372; border-radius: 99px; background: #fffaf0; color: var(--paperInk); padding: 0.8rem 1rem; font: inherit; font-size: 0.95rem; }
+.country-search input[aria-invalid="true"] { border-color: #b4281c; }
+.country-search button { white-space: nowrap; }
+.btn:disabled, .country-search input:disabled { opacity: 0.5; cursor: wait; }
+#country-search-status { margin: 0.65rem 0 0; min-height: 1.5em; font-size: 0.8rem; line-height: 1.5; }
+.intro-coverage, .intro-source-link { font-size: 0.8rem; line-height: 1.5; margin: 0.6rem auto; }
+.intro-source-link { margin-bottom: 1.4rem; }
+.globe-caption { position: fixed; right: var(--gut); bottom: 6.7rem; z-index: 2; max-width: 22rem; padding: 0.5rem 0.75rem; border: 1px solid rgba(243, 234, 217, 0.16); border-radius: 10px; color: var(--paper); background: rgba(10, 9, 8, 0.82); font-size: 0.72rem; line-height: 1.5; pointer-events: none; }
+body.on-hero .globe-caption { top: 1.2rem; bottom: auto; right: auto; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 2 * var(--gut)); text-align: center; }
+body.sheet-open .globe-caption, body.loading .globe-caption, body.past-stage .globe-caption { display: none; }
+.sheet-head .sheet-map-note { max-width: none; margin: 0 auto 0.9rem; font-size: 0.75rem; opacity: 0.8; }
+.sheet-head .sheet-coverage, .sheet-head .sheet-source { max-width: none; margin: 0.3rem auto; font-size: 0.78rem; color: #e4d7c0; }
+.sheet-head .sheet-source { margin-bottom: 1rem; }
+.sheet-shortcuts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.8rem; }
+.sheet-shortcuts button { font: 500 0.78rem var(--sans); border: 1px solid var(--glassLine); background: rgba(255, 255, 255, 0.08); color: var(--bone); padding: 0.55rem 0.75rem; border-radius: 99px; cursor: pointer; }
+.sheet-shortcuts button:hover { background: rgba(255, 255, 255, 0.16); }
+.gcard .calendar-selection { margin-bottom: 1.1rem; }
+#calendar-card, #sheet-methodology, #sources { scroll-margin-top: 5rem; }
+.sources-panel { margin-top: 2.5rem; }
+.sources-panel details { border-top: 1px solid var(--line); padding-top: 1rem; }
+.sources-panel summary, #sheet-methodology summary { cursor: pointer; font-size: 1rem; font-weight: 600; padding: 0.3rem 0; }
+.source-facts { margin: 1.2rem 0 0; }
+.source-facts > div { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 1rem; padding: 0.9rem 0; border-top: 1px solid var(--line); }
+.source-facts dt { font-size: 0.8rem; font-weight: 600; }
+.source-facts dd { margin: 0; font-size: 0.86rem; line-height: 1.6; overflow-wrap: anywhere; }
+.source-facts a, .source-links a { text-underline-offset: 3px; }
+.source-links { font-size: 0.85rem; margin: 1.2rem 0 0; }
+@media (max-width: 640px) {
+  .country-search-row { flex-direction: column; }
+  .country-search input { flex: auto; }
+  .source-facts > div { grid-template-columns: 1fr; gap: 0.3rem; }
+  body:not(.on-hero) .globe-caption { bottom: auto; top: 3.5rem; right: var(--gut); max-width: calc(100% - 2 * var(--gut)); }
+}

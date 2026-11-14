@@ -251,6 +251,52 @@
     $('#places-list').addEventListener('click', (e) => { const b = e.target.closest('button[data-id]'); if (b) openPlace(b.dataset.id); });
     $('#switch').innerHTML = ids.slice().sort((a, b) => DATA.byId[a].name.localeCompare(DATA.byId[b].name)).map((id) => `<option value="${id}">${DATA.byId[id].name}</option>`).join('');
     $('#switch').addEventListener('change', (e) => openPlace(e.target.value));
+    const countries = DATA.meta.countries.slice().sort((a, b) => a.name.localeCompare(b.name));
+    const search = $('#country-search'), status = $('#country-search-status');
+    $('#country-options').replaceChildren(...countries.map((c) => { const option = document.createElement('option'); option.value = c.name; return option; }));
+    search.disabled = false; $('#country-open').disabled = false; $('#try-angola').disabled = !DATA.byId.Angola;
+    status.textContent = `${countries.length} countries available. Choose a name or type to search.`;
+    $('#explore').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const matches = CATALOG.matchCountries(countries, search.value);
+      if (matches.length !== 1) {
+        status.textContent = matches.length ? `More than one match: ${matches.slice(0, 5).map((c) => c.name).join(', ')}${matches.length > 5 ? '…' : ''}. Enter a full country name.` : 'No matching country in this dataset. Choose a country from the suggestions.';
+        search.setAttribute('aria-invalid', 'true'); search.focus(); return;
+      }
+      search.removeAttribute('aria-invalid'); status.textContent = `Opening ${matches[0].name}…`;
+      try { await openPlace(matches[0].id, { section: 'calendar-card' }); status.textContent = `${countries.length} countries available. Choose another country to explore.`; }
+      catch (error) { status.textContent = 'The country record could not be loaded. Please try again.'; console.error(error); }
+    });
+    search.addEventListener('input', () => search.removeAttribute('aria-invalid'));
+    $('#try-angola').addEventListener('click', async () => {
+      try { await openPlace('Angola', { section: 'calendar-card' }); }
+      catch (error) { status.textContent = 'The Angola record could not be loaded. Please try again.'; console.error(error); }
+    });
+    $$('a[href="#explore"]').forEach((link) => link.addEventListener('click', () => setTimeout(() => search.focus({ preventScroll: true }), 100)));
+  }
+
+  function populateSources(root = document) {
+    const fullMonth = (ym) => `${MONF[ym % 100 - 1]} ${Math.floor(ym / 100)}`;
+    $$('[data-record-coverage]', root).forEach((el) => { el.textContent = `${fullMonth(DATA.meta.first_month)}–${fullMonth(DATA.meta.last_month)} · historical monthly observations, not live fire alerts`; });
+    $$('[data-globe-years]', root).forEach((el) => { el.textContent = (DATA.climo.years || '2012-2025').replace('-', '–'); });
+    const p = DATA.provenance;
+    const field = (selector, value) => { if (typeof value === 'string' && value.trim()) $$(selector, root).forEach((el) => { el.textContent = value; }); };
+    field('[data-product-versions]', p.product_versions);
+    field('[data-uncertainty-method]', p.uncertainty_method ? `The exported 95% band is calculated as follows: ${p.uncertainty_method}. It is not a regional confidence interval.` : null);
+    field('[data-analysis-revision]', p.analysis_revision);
+    if (p.analysis_repository) {
+      try {
+        const url = new URL(p.analysis_repository);
+        if (url.protocol === 'https:') $$('[data-analysis-revision]', root).forEach((el) => { const a = document.createElement('a'); a.href = url.href; a.textContent = p.analysis_revision ? `revision ${p.analysis_revision}` : 'upstream analysis repository (revision not recorded)'; a.target = '_blank'; a.rel = 'noopener'; el.replaceChildren(a); });
+      } catch (_) { /* Keep the explicit missing-provenance label. */ }
+    }
+    if (p.exported_at && Number.isFinite(Date.parse(p.exported_at))) field('[data-export-date]', `Exported ${new Date(p.exported_at).toISOString()}.`);
+  }
+
+  function initSources() {
+    $('#sources .sources-content').append($('#sources-template').content.cloneNode(true));
+    populateSources();
+    $('#globe-caption').textContent = `Globe: ${(DATA.climo.years || '2012-2025').replace('-', '–')} seasonal average · illustrative daily cycle`;
   }
 
   /* ============ flag map: the country's flag in theme colours only (ink, ember, sun, paper) ============ */
@@ -278,12 +324,17 @@
 
   /* ============ the country sheet ============ */
   const sheet = $('#sheet'), scroller = $('#sheet-scroll'), cardsEl = $('#cards');
-  const sh = { id: null, s: null, c: null, idx: 0, hour: 12, mode: 'camera', div: 0.5, playing: false };
+  const sh = { id: null, s: null, c: null, idx: 0, hour: 12, mode: 'camera', div: 0.5, playing: false, region: null };
+  let placeRequest = 0;
   const cname = (c) => c.name;
 
   async function openPlace(id, opts) {
     opts = opts || {};
+    const token = ++placeRequest;
     const s = await DATA.loadSeries(id), c = DATA.byId[id];
+    if (token !== placeRequest) return;
+    stopDay();
+    sh.region = null;
     Object.assign(sh, { id, s, c, idx: opts.idx != null ? opts.idx : s.months.length - 1, hour: hourAt(c.centroid[0]), mode: 'camera', div: 0.5, playing: false });
     st.sheetOpen = true; document.body.classList.add('sheet-open');
     const b = c.bbox, lat = (b[1] + b[3]) / 2, lon = (b[0] + b[2]) / 2;
@@ -296,13 +347,14 @@
     sheet.classList.add('open'); sheet.setAttribute('aria-hidden', 'false');
     scroller.scrollTop = 0; hideTip();
     buildCards(); selectIdx(sh.idx);
+    sh.region = REGIONS.mount($('#region-explorer'), c, (box) => updatePlaceLink(box), opts.box);
     placeTitle();
-    try { history.replaceState(null, '', `#place=${id}`); } catch (e) { /* ignore */ }
-    setTimeout(() => $('#sheet-back').focus({ preventScroll: true }), 700);
+    if (opts.section) goToSheetSection(opts.section);
+    setTimeout(() => { if (token === placeRequest && st.sheetOpen) (opts.section ? $('#' + opts.section) : $('#sheet-back')).focus({ preventScroll: true }); }, 700);
   }
   function closePlace() {
     if (!st.sheetOpen) return;
-    stopDay(); st.sheetOpen = false; document.body.classList.remove('sheet-open');
+    placeRequest++; stopDay(); st.sheetOpen = false; document.body.classList.remove('sheet-open');
     sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true');
     G.setSelected(null); G.setFlag(null); G.unlock(); sheetCtx = null;
     G.focus(FOCI.cameras || FOCI.hero); focusId = 'cameras';
@@ -310,13 +362,26 @@
     try { history.replaceState(null, '', '#cameras'); } catch (e) { /* ignore */ }
   }
   $('#sheet-back').addEventListener('click', closePlace);
+  function goToSheetSection(id) {
+    const target = $('#' + id, sheet);
+    if (!target) return;
+    if (id === 'sheet-methodology') $('details', target).open = true;
+    scroller.scrollTop += target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 80;
+    target.focus({ preventScroll: true });
+  }
+  sheet.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-sheet-go]');
+    if (button) goToSheetSection(button.dataset.sheetGo);
+    const sources = e.target.closest('a[href="#sheet-methodology"]');
+    if (sources) { e.preventDefault(); goToSheetSection('sheet-methodology'); $('#sheet-methodology details').open = true; }
+  });
   scroller.addEventListener('pointermove', (e) => {
     if (!st.sheetOpen || !sheetCtx) return;
     if (e.target.closest('.cards, .stepper, .switch, .sheet-back, .tier')) { heatTarget = 0; hideTip(); return; }
     const v = G.heatAt(e.clientX, e.clientY);
     if (v == null || v < 0.6) { heatTarget = 0; hideTip(); return; }
     heatTarget = clamp(Math.log1p(v) / Math.log1p(sheetCtx.vmax || 1), 0, 1);
-    gtip.innerHTML = `Typical ${MONF[sheetCtx.month - 1]}<small>about ${fmt(v)} fires a month in this 25 km square</small>`;
+    gtip.innerHTML = `Typical ${MONF[sheetCtx.month - 1]}<small>about ${fmt(v)} detections a month in this 0.5° grid cell</small>`;
     gtip.style.left = e.clientX + 'px'; gtip.style.top = e.clientY + 'px'; gtip.hidden = false;
   });
   scroller.addEventListener('pointerleave', () => { heatTarget = 0; hideTip(); });
@@ -356,6 +421,9 @@
     const same = s.harm.filter((x, j) => s.months[j] % 100 === mo && j !== i && x != null), typ = same.length ? same.reduce((p, q) => p + q, 0) / same.length : null;
     $('#sheet-cond').textContent = `fire detections in ${ymLabel(ym)}`;
     $('#sheet-hl').textContent = `${verdict}${typ != null ? `: an average ${MONF[mo - 1]} has ${fmt(typ)}` : ''}. Busiest month on record: ${ymLabel(s.summary.peak_month)} (${fmt(s.summary.peak_value)}). Counts are VIIRS-equivalent.`;
+    $('#sheet-coverage').textContent = `${ymLabel(s.months[0])}–${ymLabel(s.months[s.months.length - 1])} · historical observations`;
+    $('#sheet-source').textContent = `Selected-month source: ${CATALOG.sourceLabel(s.source[i])} · VIIRS-equivalent detections`;
+    $('#calendar-selection').textContent = `${ymLabel(ym)}: ${fmt(v)} VIIRS-equivalent detections · ${CATALOG.sourceLabel(s.source[i])} · ${verdict.toLowerCase()}`;
     $('#m-label').textContent = ymLabel(ym);
     $('#bar-name').textContent = cname(sh.c); $('#bar-val').textContent = Math.round(v).toLocaleString('en-US');
     $('#m-prev').disabled = i === 0; $('#m-next').disabled = i === s.months.length - 1;
@@ -365,7 +433,12 @@
     $$('.c-cell.sel', cardsEl).forEach((e) => e.classList.remove('sel'));
     const cell = $(`.c-cell[data-i="${i}"]`, cardsEl); if (cell) cell.classList.add('sel');
     refreshPasses(); drawMark();
-    try { history.replaceState(null, '', `#place=${sh.id}&m=${ym}`); } catch (e) { /* ignore */ }
+    $('#season-summary').innerHTML = REGIONS.countrySummary(s, sh.c, i);
+    updatePlaceLink(sh.region && sh.region.bounds());
+  }
+
+  function updatePlaceLink(box) {
+    try { history.replaceState(null, '', `#place=${sh.id}&m=${sh.s.months[sh.idx]}${box ? '&box=' + box.join(',') : ''}`); } catch (e) { /* ignore */ }
   }
 
   /* ---------- cards ---------- */
@@ -384,6 +457,9 @@
     const gap = sc['V2_terra_drift.gap_closed_pct'], worse = gap != null && gap <= 0;
     const anoms = s.months.map((m, i) => ({ i, m, z: s.z[i], v: s.harm[i] })).filter((r) => Math.abs(r.z) >= 2).sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 7);
     cardsEl.innerHTML = `
+<section class="gcard span2" id="season-summary" tabindex="-1" aria-label="Country fire season summary"></section>
+<section class="gcard span2" id="region-explorer" tabindex="-1" aria-label="Select a local area"></section>
+<section class="gcard span2 country-context"><h3 class="gh">Country record · ${cname(sh.c)}</h3><p>The calendar, satellite comparisons and downloads below cover all of ${cname(sh.c)}. A regional box changes the explorer above, not this country record.</p><p class="note">Observations: ${ymLabel(s.months[0])}–${ymLabel(s.months[s.months.length - 1])}. The globe shows a 2012–2025 seasonal average.</p></section>
 <section class="gcard span2"><h3 class="gh">${ICON.clock} When in the day<span class="gr" id="pass-sum"></span></h3>
   <div class="dayrow"><p id="day-line"></p><button type="button" id="day-play">▶ Play the day</button></div>
   <div class="tod"><div class="tod-top"><span class="tod-lab">Drag to see when the satellites pass over this country</span><output class="tod-out" id="tod-out" for="tod"></output></div><div class="tod-marks" id="tod-marks"></div><input type="range" id="tod" min="0" max="23.99" step="0.02" value="12" aria-label="Local time of day"><div class="tod-ticks" aria-hidden="true"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
@@ -393,7 +469,10 @@
 <section class="gcard"><h3 class="gh">${ICON.sat} Orbit drift</h3><div id="orb"></div>
   <div class="keys"><span><i style="background:#ffd27a"></i>Terra</span><span><i style="background:#ff8a4a"></i>Aqua</span><span><i style="background:#a9cdff"></i>VIIRS</span></div>
   <p class="note">Local time of each satellite's daytime pass over ${cname(sh.c)}. Terra slides earlier and Aqua later, from about 2020.</p></section>
-<section class="gcard span2"><h3 class="gh">${ICON.cal} Burning calendar<span class="gr">tap a month</span></h3><div class="cal-scroll"><div class="cal" id="cal" role="grid" aria-label="Burning calendar"></div></div>
+<section class="gcard span2" id="calendar-card" tabindex="-1"><h3 class="gh">${ICON.cal} ${cname(sh.c)} · Burning calendar<span class="gr">tap a month</span></h3>
+  <div class="sheet-shortcuts"><button type="button" data-sheet-go="season-summary">Season summary ↑</button><button type="button" data-sheet-go="region-explorer">Select a local area ↑</button><button type="button" data-sheet-go="sheet-methodology">Sources &amp; methodology ↓</button></div>
+  <p class="note calendar-selection" id="calendar-selection" aria-live="polite"></p>
+  <div class="cal-scroll"><div class="cal" id="cal" role="grid" aria-label="Burning calendar"></div></div>
   <p class="note">Harmonized detections per month in VIIRS units. ▲ unusually high · ▼ unusually low, against the same month in other years.</p></section>
 <section class="gcard span2"><h3 class="gh">${ICON.flame} Before and after</h3>
   <div class="seg" role="group" aria-label="Which fix to show"><button type="button" data-m="camera" class="on">Two cameras</button><button type="button" data-m="clock">Drifting clock</button></div>
@@ -406,7 +485,10 @@
   ${TIER[sh.c.tier] ? `<p class="note"><b>${TIER[sh.c.tier][0]}.</b> ${TIER[sh.c.tier][1]}</p>` : ''}
   ${worse ? `<p class="note"><b>Here the fix made things worse.</b> ${sh.id === 'India' ? 'Punjab crop burning moved later in the day, which breaks the method’s assumption.' : 'We show this on purpose.'}</p>` : ''}`}</section>
 <section class="gcard span2"><h3 class="gh">${ICON.down} Download</h3><div class="dl"><button type="button" class="btn" id="dl-csv">Monthly table (CSV)</button><a class="btn ghost" href="https://firms.modaps.eosdis.nasa.gov/download/" target="_blank" rel="noopener">NASA FIRMS raw archive ↗</a><button type="button" class="btn ghost" id="dl-link">Copy link to this view</button></div>
-  <p class="note">One row per month: harmonized count with 95% band, anomaly score, raw counts per satellite, uncorrected and drift-corrected MODIS, pass times and fire power. Hotspot-level files come from the team's server app.</p><p class="toast" id="toast" role="status" aria-live="polite"></p></section>`;
+  <p class="note">One row per month: harmonized count with the supplied 95% band, anomaly score, raw counts per satellite, uncorrected and drift-corrected MODIS, pass times and fire power. See the uncertainty limitations below.</p><p class="toast" id="toast" role="status" aria-live="polite"></p></section>
+<section class="gcard span2" id="sheet-methodology" tabindex="-1"><details><summary>Sources, methodology &amp; limitations</summary><div class="sources-content"></div></details></section>`;
+    $('#sheet-methodology .sources-content').append($('#sources-template').content.cloneNode(true));
+    populateSources($('#sheet-methodology'));
     // wire
     $('#tod').addEventListener('input', () => setHour(parseFloat($('#tod').value), true));
     $('#hours').addEventListener('click', (e) => { const b = e.target.closest('.hr'); if (b) setHour(+b.dataset.h + 0.5, true); });
@@ -553,11 +635,16 @@
     layoutTitle();
     document.body.classList.remove('loading');
     if (!reduce) { const t0 = performance.now(); (function unmelt(now) { const t = clamp((now - t0) / 2200, 0, 1); baseYear = 2050 - 67 * (1 - Math.pow(1 - t, 3)); placeTitle(); if (t < 1) requestAnimationFrame(unmelt); })(t0); }
-    if (!d) { $('.explore-hint').textContent = 'The data files did not load. Open this page over http(s), not as a local file.'; return; }
+    if (!d) { $('.explore-hint').textContent = 'The data files did not load. Open this page over http(s), not as a local file.'; $('#country-search-status').textContent = 'Country data could not be loaded. Refresh to try again.'; return; }
     initEvidence();
+    initSources();
     $('.explore-hint').innerHTML = `<span aria-hidden="true">⟲</span> Next to each card the globe is live: drag it, and tap a glowing country (brighter = more fire). ${DATA.meta.countries.length} countries.`;
     await buildPlaces();
-    const m = /place=([A-Za-z_]+)(?:&m=(\d{6}))?/.exec(location.hash);
-    if (m && DATA.byId[m[1]]) { const s = await DATA.loadSeries(m[1]); const idx = m[2] ? s.months.indexOf(+m[2]) : -1; openPlace(m[1], idx >= 0 ? { idx } : {}); }
+    const params = new URLSearchParams(location.hash.slice(1)), id = params.get('place');
+    if (id && DATA.byId[id]) {
+      const s = await DATA.loadSeries(id), idx = s.months.indexOf(+params.get('m'));
+      const box = params.has('box') ? params.get('box').split(',').map(Number) : null;
+      openPlace(id, { ...(idx >= 0 ? { idx } : {}), ...(SEASON.bounds(box) ? { box } : {}) });
+    }
   });
 })();
