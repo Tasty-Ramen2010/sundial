@@ -14,6 +14,14 @@
         const walk = (x) => { if (typeof x[0] === 'number') { if (x[0] < a) a = x[0]; if (x[0] > c) c = x[0]; if (x[1] < b) b = x[1]; if (x[1] > d) d = x[1]; } else x.forEach(walk); };
         walk(D.features[id].geometry.coordinates); D.fbox[id] = [a, b, c, d];
       }
+      // lighter copies of the shapes for drawing the whole globe (the full-detail ones stay for hit-testing and the selected country)
+      const TOL = 0.2, simpRing = (r) => { const o = [r[0]]; let l = r[0]; for (let i = 1; i < r.length - 1; i++) { if (Math.abs(r[i][0] - l[0]) + Math.abs(r[i][1] - l[1]) >= TOL) { o.push(r[i]); l = r[i]; } } o.push(r[r.length - 1]); return o.length >= 4 ? o : r; };
+      D.lite = {};
+      for (const id in D.features) {
+        const g = D.features[id].geometry, polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+        const lp = polys.map((p) => p.map(simpRing)).filter((p) => p[0].length >= 4);
+        D.lite[id] = { type: 'Feature', properties: D.features[id].properties, geometry: { type: 'MultiPolygon', coordinates: lp } };
+      }
       // fire climatology -> typed arrays for the globe
       const cells = climo.cells, n = cells.length;
       const x = new Float32Array(n), y = new Float32Array(n), z = new Float32Array(n), lon = new Float32Array(n), lat = new Float32Array(n);

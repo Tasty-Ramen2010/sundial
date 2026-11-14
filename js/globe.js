@@ -6,8 +6,9 @@
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const cv = $('#globe'), ctx = cv.getContext('2d');
   let W = 0, H = 0, DPR = 1, stars = [];
-  const proj = d3.geoOrthographic().clipAngle(90).precision(0.6);
+  const proj = d3.geoOrthographic().clipAngle(90).precision(1.1);
   const path = d3.geoPath(proj, ctx);
+  const proj2 = d3.geoOrthographic().clipAngle(90).precision(5), path2 = d3.geoPath(proj2, ctx);   // coarser resampling for the 182 country shapes
   const grat = d3.geoGraticule10();
 
   const T = { utc: 11, month: 9.2, playing: !reduce, utcTarget: null, monthTarget: null };
@@ -21,7 +22,7 @@
   const hdiff = (a, b) => ((((a - b + 12) % 24) + 24) % 24) - 12;
 
   function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    DPR = Math.min(window.devicePixelRatio || 1, 1.25);
     W = window.innerWidth; H = window.innerHeight;
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
@@ -113,36 +114,42 @@
     return null;
   }
 
+  let lastDraw = 0;
   function draw(now) {
-    const dt = Math.min(0.06, (now - last) / 1000); last = now;
+    if (!running) return;
+    if (document.hidden) { requestAnimationFrame(draw); return; }
+    if (!dragging && now - lastDraw < 29) { requestAnimationFrame(draw); return; }   // ~30 fps: plenty for a slow-turning globe, half the CPU
+    lastDraw = now;
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const st = dt * 60, ez = (k) => 1 - Math.pow(1 - k, st);   // per-frame easing constants, converted so speed does not depend on frame rate
     const DATA = window.DATA;
 
     // clock
     if (T.utcTarget != null) {
       const d = hdiff(T.utcTarget, T.utc);
-      T.utc = (T.utc + d * 0.1 + 24) % 24;
+      T.utc = (T.utc + d * ez(0.1) + 24) % 24;
     } else if (T.playing) T.utc = (T.utc + dt * (24 / 52) * (F.playSpeed || 1)) % 24;
     if (T.monthTarget != null) {
       let d = T.monthTarget - T.month; if (d > 6) d -= 12; if (d < -6) d += 12;
-      T.month = 1 + ((T.month - 1 + d * 0.08 + 12) % 12);
+      T.month = 1 + ((T.month - 1 + d * ez(0.08) + 12) % 12);
     } else if (F.month != null) {
       let d = F.month - T.month; if (d > 6) d -= 12; if (d < -6) d += 12;
-      T.month = 1 + ((T.month - 1 + d * 0.03 + 12) % 12);
+      T.month = 1 + ((T.month - 1 + d * ez(0.03) + 12) % 12);
     } else if (T.playing) T.month = 1 + ((T.month - 1 + dt * (12 / 80)) % 12);
 
     updateFly(now);
     // ease the camera
-    const L = layout(F), e = inited ? 0.075 : 1;
+    const L = layout(F), e = inited ? ez(0.075) : 1;
     V.R *= Math.pow(L.R / V.R, e);
     V.cx += (L.cx - V.cx) * e; V.cy += (L.cy - V.cy) * e;
-    V.ring += ((F.ring || 0) - V.ring) * 0.06;
-    V.band += (((F.bands && F.bands.length) ? 1 : 0) - V.band) * 0.06;
-    V.glass += ((F.glass || 0) - V.glass) * 0.07;
-    V.ctry += ((F.layout === 'story' ? 0.25 : F.layout === 'sheet' ? 0.0 : 1) - V.ctry) * 0.06;
-    V.labels += (((F.layout === 'explore') ? 1 : 0) - V.labels) * 0.08;
-    V.light += (((F.layout === 'story' || F.layout === 'explore') ? 1 : 0) - V.light) * 0.09;
+    V.ring += ((F.ring || 0) - V.ring) * ez(0.06);
+    V.band += (((F.bands && F.bands.length) ? 1 : 0) - V.band) * ez(0.06);
+    V.glass += ((F.glass || 0) - V.glass) * ez(0.07);
+    V.ctry += ((F.layout === 'story' ? 0.25 : F.layout === 'sheet' ? 0.0 : 1) - V.ctry) * ez(0.06);
+    V.labels += (((F.layout === 'explore') ? 1 : 0) - V.labels) * ez(0.08);
+    V.light += (((F.layout === 'story' || F.layout === 'explore') ? 1 : 0) - V.light) * ez(0.09);
     if (!dragging && now > userUntil) {
-      if (F.auto && !reduce) { autoLon += dt * 3.2; V.lon = wrap(autoLon); V.lat += (F.lat - V.lat) * 0.05; }
+      if (F.auto && !reduce) { autoLon += dt * 3.2; V.lon = wrap(autoLon); V.lat += (F.lat - V.lat) * ez(0.05); }
       else { V.lon = wrap(V.lon + angDiff(F.lon, V.lon) * e); V.lat += (F.lat - V.lat) * e; autoLon = V.lon; }
     } else autoLon = V.lon;
     inited = true;
@@ -151,6 +158,7 @@
     ctx.clearRect(0, 0, W, H);
     const g1 = 1 - V.glass;
     proj.rotate([-V.lon, -V.lat]).scale(V.R).translate([V.cx, V.cy]);
+    proj2.rotate([-V.lon, -V.lat]).scale(V.R).translate([V.cx, V.cy]);
 
     const sl = 1 - V.light;
     if (sl > 0.02) for (const s of stars) { ctx.fillStyle = `rgba(243,234,217,${s.a * (0.35 + 0.65 * g1) * sl * (0.72 + 0.28 * Math.sin(now / 1000 * s.sp + s.ph))})`; ctx.fillRect(s.x, s.y, s.s, s.s); }
@@ -168,7 +176,7 @@
     ctx.fillStyle = V.glass > 0.5 ? `rgba(14,20,34,${0.2 + 0.3 * g1})` : '#1c242f';
     ctx.fillStyle = `rgba(${Math.round(28 - 10 * V.glass)},${Math.round(36 - 12 * V.glass)},${Math.round(47 - 6 * V.glass)},${0.34 + 0.66 * g1})`;
     ctx.beginPath(); path(land); ctx.fill();
-    ctx.strokeStyle = `rgba(243,234,217,${0.09 + 0.3 * V.glass})`; ctx.lineWidth = 0.6 + V.glass; ctx.beginPath(); path(borders); ctx.stroke();
+    ctx.strokeStyle = `rgba(243,234,217,${0.09 + 0.3 * V.glass})`; ctx.lineWidth = 0.6 + V.glass; if (V.ctry < 0.7 || !window.DATA.features) { ctx.beginPath(); path(borders); ctx.stroke(); }   // country outlines below already draw the borders
 
     // night side
     if (g1 > 0.02) {
@@ -187,7 +195,35 @@
     if (F.pins) drawPins(F.pins);
     if (V.labels > 0.05 && DATA.byId) drawLabels();
 
-    if (running) requestAnimationFrame(draw);
+    requestAnimationFrame(draw);
+  }
+
+  /* country outlines for the whole-globe view: unit vectors precomputed once, projected by hand (orthographic is just dot products).
+     d3's general projector cost ~20 ms a frame for 180 shapes; this is under 1 ms. Points behind the horizon break the line. */
+  let CR = null;
+  function prepRings() {
+    CR = {};
+    for (const id in window.DATA.features) {
+      const src = (window.DATA.lite && window.DATA.lite[id]) || window.DATA.features[id], g = src.geometry, polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates, rings = [];
+      for (const p of polys) for (const r of p) {
+        const n = r.length, a = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) { const lo = r[i][0] * Math.PI / 180, la = r[i][1] * Math.PI / 180, c = Math.cos(la); a[i * 3] = c * Math.cos(lo); a[i * 3 + 1] = c * Math.sin(lo); a[i * 3 + 2] = Math.sin(la); }
+        rings.push(a);
+      }
+      CR[id] = rings;
+    }
+  }
+  function ringsPath(id, vx, vy, vz, ex, ey, nx, ny, nz) {
+    const R = V.R, cx = V.cx, cy = V.cy;
+    for (const a of CR[id]) {
+      let pen = false;
+      for (let i = 0; i < a.length; i += 3) {
+        const x = a[i], y = a[i + 1], z = a[i + 2];
+        if (x * vx + y * vy + z * vz < 0) { pen = false; continue; }
+        const sx = cx + R * (x * ex + y * ey), sy = cy - R * (x * nx + y * ny + z * nz);
+        if (pen) ctx.lineTo(sx, sy); else { ctx.moveTo(sx, sy); pen = true; }
+      }
+    }
   }
 
   function drawCountries() {
@@ -196,6 +232,8 @@
     const lam = V.lon * Math.PI / 180, phi = V.lat * Math.PI / 180;
     const vx = Math.cos(phi) * Math.cos(lam), vy = Math.cos(phi) * Math.sin(lam), vz = Math.sin(phi);
     // everything on the visible side goes into ONE path (fast with 180+ countries); hovered and selected are drawn on top
+    if (!CR) prepRings();
+    const cl = Math.cos(lam), sl = Math.sin(lam), cp = Math.cos(phi), sp = Math.sin(phi);
     ctx.beginPath();
     let any = false;
     for (const id in DATA.features) {
@@ -205,7 +243,7 @@
       const dot = Math.cos(la) * Math.cos(lo) * vx + Math.cos(la) * Math.sin(lo) * vy + Math.sin(la) * vz;
       const half = Math.min(3.1, Math.max(c.bbox[2] - c.bbox[0], c.bbox[3] - c.bbox[1]) * Math.PI / 360);
       if (Math.acos(Math.max(-1, Math.min(1, dot))) > Math.PI / 2 + half) continue;
-      path(DATA.features[id]); any = true;
+      ringsPath(id, vx, vy, vz, -sl, cl, -sp * cl, -sp * sl, cp); any = true;
     }
     if (any && V.ctry > 0.02) {
       ctx.fillStyle = `rgba(255,130,50,${0.07 * V.ctry})`; ctx.fill();
@@ -233,25 +271,41 @@
   }
 
   const COLS = ['rgba(255,110,30,.28)', 'rgba(255,120,30,.5)', 'rgba(255,150,50,.75)', 'rgba(255,190,90,.92)', 'rgba(255,236,180,1)'];
-  function drawFires(C) {
-    const lam = V.lon * Math.PI / 180, phi = V.lat * Math.PI / 180;
-    const vx = Math.cos(phi) * Math.cos(lam), vy = Math.cos(phi) * Math.sin(lam), vz = Math.sin(phi);
-    const m0 = Math.floor(T.month - 1) % 12, m1 = (m0 + 1) % 12, f = (T.month - 1) - Math.floor(T.month - 1);
-    const lp = Math.log1p(C.p95);
-    const buckets = [[], [], [], [], []];
+  /* one-time prep: per-cell, per-month strength already on the 0..1 curve, plus the list of cells that ever burn */
+  let FP = null;
+  function prepFires(C) {
+    const lp = Math.log1p(C.p95), sm = new Float32Array(C.n * 12), act = [];
     for (let i = 0; i < C.n; i++) {
-      if (C.x[i] * vx + C.y[i] * vy + C.z[i] * vz < 0.03) continue;
-      const v = C.v[i * 12 + m0] * (1 - f) + C.v[i * 12 + m1] * f;
-      if (v < 0.6) continue;
-      const s = Math.pow(Math.min(1, Math.log1p(v) / lp), 1.7);
-      const lt = (T.utc + C.lon[i] / 15 + 24) % 24;
+      let any = false;
+      for (let m = 0; m < 12; m++) { const v = C.v[i * 12 + m]; if (v >= 0.6) { sm[i * 12 + m] = Math.pow(Math.min(1, Math.log1p(v) / lp), 1.7); any = true; } }
+      if (any) act.push(i);
+    }
+    FP = { sm, act: Int32Array.from(act), bx: new Float32Array(act.length * 2) };
+  }
+  const dtab = new Float32Array(241);
+  function drawFires(C) {
+    if (!FP) prepFires(C);
+    const lam = V.lon * Math.PI / 180, phi = V.lat * Math.PI / 180;
+    const cl = Math.cos(lam), sl = Math.sin(lam), cp = Math.cos(phi), sp = Math.sin(phi);
+    const vx = cp * cl, vy = cp * sl, vz = sp;            // toward the viewer
+    const ex = -sl, ey = cl;                               // screen-right
+    const nx = -sp * cl, ny = -sp * sl, nz = cp;           // screen-up
+    const m0 = Math.floor(T.month - 1) % 12, m1 = (m0 + 1) % 12, f = (T.month - 1) - Math.floor(T.month - 1);
+    for (let k = 0; k <= 240; k++) dtab[k] = diurnal(k / 10);
+    const { sm, act } = FP, R = V.R, cx = V.cx, cy = V.cy, utc = T.utc;
+    const fl = curFly, buckets = [[], [], [], [], []];
+    for (let a = 0; a < act.length; a++) {
+      const i = act[a], px = C.x[i], py = C.y[i], pz = C.z[i];
+      if (px * vx + py * vy + pz * vz < 0.03) continue;
+      const s = sm[i * 12 + m0] * (1 - f) + sm[i * 12 + m1] * f;
+      if (s <= 0) continue;
+      let lt = (utc + C.lon[i] / 15 + 24) % 24;
       let boost = 0;
-      if (curFly) { const dl = Math.abs(wrap(C.lon[i] - curFly.lon)); if (dl < curFly.w && (curFly.dir < 0 ? C.lat[i] >= curFly.lat : C.lat[i] <= curFly.lat)) boost = curFly.a; }
-      const lvl = Math.min(1, s * (0.25 + 0.75 * diurnal(lt)) + 0.55 * boost * Math.max(s, 0.4));
+      if (fl) { const dl = Math.abs(wrap(C.lon[i] - fl.lon)); if (dl < fl.w && (fl.dir < 0 ? C.lat[i] >= fl.lat : C.lat[i] <= fl.lat)) boost = fl.a; }
+      const lvl = Math.min(1, s * (0.25 + 0.75 * dtab[Math.round(lt * 10)]) + 0.55 * boost * Math.max(s, 0.4));
       if (lvl < 0.07) continue;
       const b = Math.min(4, Math.floor(lvl * 6.2));
-      const q = proj([C.lon[i], C.lat[i]]);
-      buckets[b].push(q[0], q[1]);
+      buckets[b].push(cx + R * (px * ex + py * ey), cy - R * (px * nx + py * ny + pz * nz));
     }
     const cell = V.R * 0.5 * Math.PI / 180;
     const sz = Math.max(1.25, Math.min(cell * 0.95, V.R * 0.02));

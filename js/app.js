@@ -103,13 +103,15 @@
 
   /* ============ embers: smoke you can see when a place is burning ============ */
   const ec = $('#embers'), ectx = ec.getContext('2d');
-  let parts = [], emberLevel = 0, lastT = performance.now();
+  let parts = [], emberDirty = false, emberLevel = 0, lastT = performance.now();
   function embersFrame(now) {
-    const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-    const W = innerWidth, H = innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+    const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+    const want = st.sheetOpen && !reduce ? Math.round(emberLevel * 90) : 0;
+    if (!want && !parts.length) { if (emberDirty) { ectx.setTransform(1, 0, 0, 1, 0, 0); ectx.clearRect(0, 0, ec.width, ec.height); emberDirty = false; } return; }   // nothing burning: leave the canvas alone
+    emberDirty = true;
+    const W = innerWidth, H = innerHeight, dpr = 1;
     if (ec.width !== Math.round(W * dpr)) { ec.width = Math.round(W * dpr); ec.height = Math.round(H * dpr); }
     ectx.setTransform(dpr, 0, 0, dpr, 0, 0); ectx.clearRect(0, 0, W, H);
-    const want = st.sheetOpen && !reduce ? Math.round(emberLevel * 110) : 0;
     while (parts.length < want) parts.push({ x: Math.random() * W, y: H + Math.random() * 40, v: 18 + Math.random() * 46, s: 0.8 + Math.random() * 2.2, ph: Math.random() * 6.3, a: 0.2 + Math.random() * 0.5 });
     if (parts.length > want) parts.length = want;
     ectx.globalCompositeOperation = 'lighter';
@@ -124,9 +126,12 @@
   }
 
   /* ============ frame loop for things that are not the globe ============ */
+  let fAt = 0;
   function frame(now) {
-    skyFrame(); embersFrame(now);
     requestAnimationFrame(frame);
+    if (document.hidden || now - fAt < 33) return;   // 30 fps is plenty for slow colour drifts
+    fAt = now;
+    skyFrame(); embersFrame(now);
   }
 
   /* ============ scroll ============ */
