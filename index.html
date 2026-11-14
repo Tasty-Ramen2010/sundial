@@ -15,7 +15,7 @@
 </head>
 <body class="loading">
 
-<a class="skip" href="#explore">Skip to the countries</a>
+<a class="skip" href="#explore">Skip to the globe</a>
 
 <div id="loader" role="status" aria-label="Loading SUNDIAL">
   <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
@@ -46,7 +46,6 @@
 
 <!-- 00: the art -->
 <section id="hero" class="scene hero">
-  <p class="hero-kicker">NASA Space Apps Challenge 2026 &nbsp;·&nbsp; Harmonization of MODIS and VIIRS Hot Spots</p>
   <div class="chin">
     <div class="chin-in">
       <p class="chin-lede">Satellites count more fires in the afternoon than the morning, and two of them have spent five years drifting through the day. We put <b>25 years of NASA fire detections</b> on one fair scale.</p>
@@ -159,10 +158,7 @@
 
 </main>
 
-<aside id="tray" class="tray" aria-label="Countries with data">
-  <h2 id="places" class="sr">Countries with data</h2>
-  <div class="tray-row" id="tray-row"></div>
-</aside>
+<nav class="sr" aria-label="Countries with data"><ul id="places-list"></ul></nav>
 
 <nav id="dock" class="dock" aria-label="Sections">
   <a href="#explore" data-for="explore"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17"/></svg><span>Globe</span></a>
@@ -177,6 +173,7 @@
   <div class="sheet-scroll" id="sheet-scroll">
     <header class="sheet-head">
       <h2 id="sheet-name"></h2>
+      <label class="switch"><span class="sr">Switch country</span><select id="switch"></select></label>
       <p class="sheet-num" id="sheet-num"></p>
       <p class="sheet-cond" id="sheet-cond"></p>
       <p class="sheet-hl" id="sheet-hl"></p>

@@ -10,12 +10,12 @@
   --display: "Climate Crisis", "Arial Black", Impact, sans-serif;
   --sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
   --gut: clamp(1.1rem, 4vw, 3.4rem);
-  --glass: rgba(255, 255, 255, 0.13);
-  --glassLine: rgba(255, 255, 255, 0.2);
+  --glass: rgba(28, 11, 6, 0.38);
+  --glassLine: rgba(255, 190, 120, 0.2);
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; background: var(--ink); }
-body { margin: 0; background: var(--ink); color: var(--bone); font: 400 1.0625rem/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+html { scroll-behavior: smooth; background: var(--ink); overflow-x: clip; }
+body { margin: 0; overflow-x: clip; background: var(--ink); color: var(--bone); font: 400 1.0625rem/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
 body.loading, body.sheet-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
 h1, h2, h3 { margin: 0; font-weight: 500; letter-spacing: -0.02em; line-height: 1.08; }
@@ -65,11 +65,11 @@ body.sheet-open .hud, body.past-stage .hud { opacity: 0; }
 body:not(.loading) #title { opacity: 1; }
 
 /* ---------- hero + the chin ---------- */
-.scene { position: relative; z-index: 3; min-height: 100svh; display: flex; align-items: center; padding: 6rem var(--gut); pointer-events: none; }
-.scene.tall { min-height: 320svh; align-items: flex-start; }
-.hero { padding: 0; align-items: flex-start; }
-.hero-kicker { position: absolute; top: 1.3rem; left: var(--gut); margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sun); max-width: 20rem; line-height: 1.6; }
-.chin { position: absolute; left: 50%; bottom: -1px; width: min(1500px, 140vw); height: min(40svh, 20rem); transform: translateX(-50%);
+.scene { position: relative; z-index: 3; min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding: 6rem var(--gut); pointer-events: none; }
+.scene.tall { min-height: 320vh; min-height: 320svh; align-items: flex-start; }
+.hero { padding: 0; align-items: flex-start; height: 100vh; height: 100svh; overflow: hidden; }
+.hero-kicker-unused { position: absolute; top: 1.3rem; left: var(--gut); margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sun); max-width: 20rem; line-height: 1.6; }
+.chin { position: absolute; left: 50%; bottom: -1px; width: min(1500px, 140vw); height: min(38vh, 19rem); height: min(38svh, 19rem); transform: translateX(-50%);
   background: var(--paper); border-radius: 50% 50% 0 0 / 100% 100% 0 0; pointer-events: auto; display: flex; justify-content: center; align-items: flex-end; padding-bottom: clamp(1.2rem, 4svh, 2.6rem); }
 .chin-in { width: min(33rem, 76vw); text-align: center; color: var(--paperInk); }
 .chin-lede { margin: 0 auto 1.1rem; font-size: clamp(0.98rem, 1.4vw, 1.12rem); line-height: 1.5; }
@@ -146,19 +146,6 @@ input[type="number"]:focus { border-color: var(--ember); outline: none; }
 @keyframes grow { from { transform: scaleX(0); } }
 @media (max-width: 640px) { .board li { grid-template-columns: 5rem 1fr 3.6rem; } .board li .b-tag { display: none; } }
 
-/* ---------- places tray (Apple Weather's location list, along the bottom) ---------- */
-.tray { position: fixed; left: 0; right: 0; bottom: 4.9rem; z-index: 25; transform: translateY(140%); opacity: 0; pointer-events: none; visibility: hidden; transition: transform 0.6s cubic-bezier(.2, .8, .2, 1), opacity 0.4s, visibility 0s 0.6s; }
-body.show-tray:not(.sheet-open) .tray { transform: none; opacity: 1; pointer-events: auto; visibility: visible; transition-delay: 0s; }
-.tray-row { display: flex; gap: 0.7rem; overflow-x: auto; padding: 0.3rem var(--gut) 0.6rem; scroll-snap-type: x proximity; scrollbar-width: none; }
-.tray-row::-webkit-scrollbar { display: none; }
-.pcard { flex: 0 0 auto; width: 10.6rem; height: 6.2rem; border: 0; border-radius: 20px; padding: 0.7rem 0.8rem; color: #fff; text-align: left; cursor: pointer; position: relative; overflow: hidden; scroll-snap-align: start;
-  display: flex; flex-direction: column; justify-content: space-between; font: inherit; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.16); transition: transform 0.2s; }
-.pcard:hover, .pcard.hot { transform: translateY(-4px) scale(1.02); }
-.pcard .pn { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
-.pcard .pt { font-size: 0.68rem; font-weight: 500; opacity: 0.78; }
-.pcard .pv { font-size: 1.9rem; font-weight: 200; letter-spacing: -0.03em; line-height: 1; }
-.pcard .pc { font-size: 0.66rem; font-weight: 600; opacity: 0.85; }
-.pcard svg { position: absolute; right: 0.6rem; bottom: 0.6rem; width: 4.2rem; height: 1.6rem; opacity: 0.85; }
 .gtip { position: fixed; z-index: 28; pointer-events: none; transform: translate(-50%, -140%); background: rgba(10, 9, 8, 0.82); backdrop-filter: blur(10px); border: 1px solid var(--glassLine); border-radius: 12px; padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
 .gtip small { display: block; font-weight: 500; opacity: 0.7; font-size: 0.68rem; }
 
@@ -277,3 +264,27 @@ body.loading .dock, body.sheet-open .dock { opacity: 0; pointer-events: none; tr
 .grid3 h2 { font-size: clamp(1.4rem, 2.2vw, 1.9rem); } .grid3 p { font-size: 0.97rem; color: #d3cabb; }
 @media (max-width: 860px) { .grid3 { grid-template-columns: 1fr; } }
 .foot { margin-top: 3.5rem; padding-top: 1.2rem; border-top: 1px solid var(--line); font-size: 0.74rem; color: var(--dim); } .foot p { margin: 0; max-width: none; }
+
+/* ---------- fixes + sheet polish ---------- */
+body.sheet-open main, body.sheet-open .closing { opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0s 0.3s; }
+.dock { transition: opacity 0.3s, transform 0.4s; }
+body.on-hero .dock { opacity: 0; pointer-events: none; transform: translate(-50%, 140%); }
+.switch { display: inline-block; margin: 0.5rem 0 0.2rem; position: relative; }
+.switch select { appearance: none; -webkit-appearance: none; background: rgba(0, 0, 0, 0.28); color: #fff; border: 1px solid var(--glassLine); border-radius: 99px; padding: 0.4rem 2rem 0.4rem 1rem; font: 600 0.8rem var(--sans); cursor: pointer; width: auto; backdrop-filter: blur(14px); }
+.switch::after { content: ""; position: absolute; right: 0.9rem; top: 50%; width: 6px; height: 6px; border-right: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.switch option { color: #111; }
+/* time-of-day slider */
+.tod { position: relative; margin: 0.2rem 0 0.9rem; padding-top: 1.5rem; }
+.tod-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.1rem; }
+.tod-out { font-size: 1.9rem; font-weight: 200; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.tod-lab { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.tod-marks { position: relative; height: 1.3rem; margin: 0 13px; }
+.tod-marks b { position: absolute; top: 0; transform: translateX(-50%); padding: 1px 6px; border-radius: 6px; font-size: 0.62rem; font-weight: 700; color: #101010; }
+.tod-marks .t { background: #ffd27a; } .tod-marks .a { background: #ff8a4a; } .tod-marks .v { background: #a9cdff; }
+#tod { width: 100%; height: 30px; margin: 0; cursor: grab; }
+#tod:active { cursor: grabbing; }
+#tod::-webkit-slider-runnable-track { height: 14px; border-radius: 8px; background: var(--trackbg, rgba(255,255,255,0.2)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
+#tod::-moz-range-track { height: 14px; border-radius: 8px; background: var(--trackbg, rgba(255,255,255,0.2)); }
+#tod::-webkit-slider-thumb { width: 28px; height: 28px; margin-top: -7px; border: 3px solid rgba(0, 0, 0, 0.35); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
+#tod::-moz-range-thumb { width: 24px; height: 24px; border: 3px solid rgba(0, 0, 0, 0.35); }
+.tod-ticks { display: flex; justify-content: space-between; margin: 0 6px; font-size: 0.6rem; font-weight: 600; opacity: 0.65; }

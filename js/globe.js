@@ -14,7 +14,7 @@
   const V = { lon: -45, lat: 8, R: 300, cx: 0, cy: 0, glass: 0, ring: 0.3, band: 0, ctry: 1, labels: 0 };
   let F = { layout: 'hero', lon: -45, lat: 8, auto: true, ring: 0.3 };
   let hover = null, selected = null, dragging = false, userUntil = 0, autoLon = -45, inited = false, running = false, last = performance.now();
-  let pickCb = null, hoverCb = null, bandInfo = () => ({ h: 13.5, c: '125,178,255', label: 'VIIRS' });
+  let flagTex = null, pickCb = null, hoverCb = null, bandInfo = () => ({ h: 13.5, c: '125,178,255', label: 'VIIRS' });
 
   const wrap = (a) => ((((a + 180) % 360) + 360) % 360) - 180;
   const angDiff = (a, b) => wrap(a - b);
@@ -94,7 +94,7 @@
     const g1 = 1 - V.glass;
     proj.rotate([-V.lon, -V.lat]).scale(V.R).translate([V.cx, V.cy]);
 
-    if (g1 > 0.02) for (const s of stars) { ctx.fillStyle = `rgba(243,234,217,${s.a * g1})`; ctx.fillRect(s.x, s.y, s.s, s.s); }
+    for (const s of stars) { ctx.fillStyle = `rgba(243,234,217,${s.a * (0.35 + 0.65 * g1)})`; ctx.fillRect(s.x, s.y, s.s, s.s); }
 
     if (g1 > 0.02) { // atmosphere
       const g = ctx.createRadialGradient(V.cx, V.cy, V.R * 0.98, V.cx, V.cy, V.R * 1.22);
@@ -140,6 +140,16 @@
       if (a < 0.02) continue;
       ctx.beginPath(); path(f);
       ctx.fillStyle = `rgba(255,130,50,${(isSel ? 0.05 : isHov ? 0.2 : 0.07) * a})`; ctx.fill();
+      if (isSel && flagTex && V.glass > 0.25) {
+        const bb = path.bounds(f), bw = bb[1][0] - bb[0][0], bh = bb[1][1] - bb[0][1];
+        if (bw > 2 && bh > 2) {
+          ctx.save(); ctx.beginPath(); path(f); ctx.clip();
+          const sc = Math.max(bw / flagTex.width, bh / flagTex.height), dw = flagTex.width * sc, dh = flagTex.height * sc;
+          ctx.globalAlpha = 0.34 * Math.min(1, (V.glass - 0.25) / 0.5);
+          ctx.drawImage(flagTex, bb[0][0] + (bw - dw) / 2, bb[0][1] + (bh - dh) / 2, dw, dh);
+          ctx.restore();
+        }
+      }
       ctx.strokeStyle = `rgba(255,170,90,${(isSel ? 0.9 : isHov ? 0.95 : 0.4) * a})`; ctx.lineWidth = isSel ? 1.6 : isHov ? 1.8 : 0.9; ctx.stroke();
     }
   }
@@ -281,6 +291,7 @@
     focus(f) { F = f; userUntil = 0; },
     get layout() { return F.layout; },
     setSelected(id) { selected = id; },
+    setFlag(c) { flagTex = c; },
     onPick(cb) { pickCb = cb; }, onHover(cb) { hoverCb = cb; },
     setBandInfo(fn) { bandInfo = fn; },
     lockLocalHour(hour, lon) { T.utcTarget = ((hour - lon / 15) % 24 + 24) % 24; },

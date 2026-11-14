@@ -18,15 +18,15 @@
 
   /* Key skies by sun altitude (top colour, middle, horizon glow). Night -> civil twilight -> golden -> day. */
   const KEYS = [
-    { a: -18, top: '#050816', mid: '#0b1233', bot: '#18214a' },
-    { a: -8,  top: '#0d1540', mid: '#2a2a6b', bot: '#8a4a7a' },
-    { a: -1,  top: '#26357d', mid: '#8a5a8f', bot: '#f08a4b' },
-    { a: 6,   top: '#3f6fc2', mid: '#8fa9d6', bot: '#f4b27a' },
-    { a: 20,  top: '#2c78d4', mid: '#5aa0e6', bot: '#a9d3f5' },
-    { a: 60,  top: '#1b66c9', mid: '#3f8fe0', bot: '#8cc4f0' }
+    { a: -18, top: '#04030a', mid: '#0a0812', bot: '#150d1a' },   // deep space
+    { a: -8,  top: '#0b0716', mid: '#2b0f2c', bot: '#8a2a1c' },   // plum into ember
+    { a: -1,  top: '#1d0c1f', mid: '#6e1f1c', bot: '#e5581b' },   // sunrise / sunset
+    { a: 6,   top: '#2b1108', mid: '#92350f', bot: '#ff9a3a' },   // golden hour
+    { a: 20,  top: '#2a1409', mid: '#7e380f', bot: '#ec8730' },   // bronze day
+    { a: 60,  top: '#26130a', mid: '#6e320e', bot: '#dc7b2b' }    // high sun, still warm and dark enough to read
   ].map((k) => ({ a: k.a, top: hex(k.top), mid: hex(k.mid), bot: hex(k.bot) }));
 
-  const SMOKE = { top: hex('#4a2a14'), mid: hex('#9a5a2a'), bot: hex('#e08a3a') };
+  const SMOKE = { top: hex('#3a0f06'), mid: hex('#8a2208'), bot: hex('#e8450f') };
 
   /* smoke 0..1: how much the place is burning right now. Returns three CSS colours plus a night flag. */
   function sky(latDeg, month, hour, smoke) {

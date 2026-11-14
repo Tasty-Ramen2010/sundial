@@ -56,6 +56,7 @@
   }
   function placeTitle() {
     const W = innerWidth, H = innerHeight, mobile = W < 860;
+    tw = title.offsetWidth || tw; th = title.offsetHeight || th;
     const big = parseFloat(title.style.fontSize) || 100, small = mobile ? 16 : 21, s = small / big;
     const p = st.sheetOpen ? 1 : clamp(scrollY / (H * 0.55), 0, 1);
     const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
@@ -133,7 +134,7 @@
     let pick = 'hero';
     for (const s of scenes) { const r = s.getBoundingClientRect(); if (r.top <= mid && r.bottom > mid) pick = s.id; }
     if (pick !== focusId) { focusId = pick; G.focus(FOCI[pick] || FOCI.hero); }
-    document.body.classList.toggle('show-tray', pick === 'explore');
+    document.body.classList.toggle('on-hero', pick === 'hero');
     $$('#dock a').forEach((a) => a.classList.toggle('on', a.dataset.for === dockMap[pick]));
     const past = closing.getBoundingClientRect().top < innerHeight * 0.4;
     if (past !== document.body.classList.contains('past-stage')) { document.body.classList.toggle('past-stage', past); past ? G.stop() : G.start(); }
@@ -229,30 +230,37 @@
     FOCI.evidence.pins = ['Mozambique', 'India', 'Kazakhstan', 'Australia'].map((id) => { const c = DATA.byId[id], r = DATA.score[id]; return { lon: c.centroid[0], lat: c.centroid[1], t: `${c.name} ${Math.round(r['V2_terra_drift.gap_closed_pct'])}%` }; });
   }
 
-  /* ============ places tray ============ */
-  async function buildTray() {
+  /* ============ countries: loaded up front so tooltips, the switcher and the screen-reader list work ============ */
+  async function buildPlaces() {
     const ids = DATA.meta.countries.map((c) => c.id);
     await Promise.all(ids.map(DATA.loadSeries));
-    const row = $('#tray-row');
-    const paint = () => {
-      const mo = new Date().getMonth() + 1;
-      $$('.pcard', row).forEach((b) => {
-        const c = DATA.byId[b.dataset.id], s = DATA.series[b.dataset.id], i = s.months.length - 1;
-        const h = hourAt(c.centroid[0]);
-        b.style.background = SKY.gradient(SKY.sky(c.centroid[1], mo, h, clamp(s.harm[i] / (s.summary.peak_value || 1), 0, 1) * 0.7));
-        $('.pt', b).textContent = `${S.fmtH(h)} local`;
-      });
-    };
-    row.innerHTML = ids.map((id) => {
-      const c = DATA.byId[id], s = DATA.series[id], i = s.months.length - 1, last = s.harm.slice(-30), mx = Math.max(...last, 1);
-      const pts = last.map((v, k) => `${(k / (last.length - 1) * 60).toFixed(1)},${(20 - (v / mx) * 18).toFixed(1)}`).join(' ');
-      const z = s.z[i];
-      return `<button class="pcard" data-id="${id}" aria-label="${c.name}, open"><span><span class="pn">${c.name}</span><br><span class="pt"></span></span><span><span class="pv">${fmt(s.harm[i])}</span><br><span class="pc">${z >= 2 ? 'Unusually high' : z <= -2 ? 'Unusually low' : 'Typical for ' + MON[s.months[i] % 100 - 1]}</span></span><svg viewBox="0 0 60 22" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></button>`;
-    }).join('');
-    paint(); setInterval(paint, 60000);
-    row.addEventListener('click', (e) => { const b = e.target.closest('.pcard'); if (b) openPlace(b.dataset.id); });
-    row.addEventListener('mouseover', (e) => { const b = e.target.closest('.pcard'); if (b) G.setSelected(b.dataset.id); });
-    row.addEventListener('mouseleave', () => { if (!st.sheetOpen) G.setSelected(null); });
+    $('#places-list').innerHTML = ids.map((id) => `<li><button type="button" data-id="${id}">${DATA.byId[id].name}</button></li>`).join('');
+    $('#places-list').addEventListener('click', (e) => { const b = e.target.closest('button[data-id]'); if (b) openPlace(b.dataset.id); });
+    $('#switch').innerHTML = ids.map((id) => `<option value="${id}">${DATA.byId[id].name}</option>`).join('');
+    $('#switch').addEventListener('change', (e) => openPlace(e.target.value));
+  }
+
+  /* ============ flag map: the country's flag in theme colours only (ink, ember, sun, paper) ============ */
+  const flagCache = {};
+  function ramp(l) {
+    const stops = [[0, [18, 8, 10]], [0.25, [122, 34, 8]], [0.55, [255, 106, 26]], [0.8, [255, 198, 90]], [1, [243, 234, 217]]];
+    for (let i = 1; i < stops.length; i++) if (l <= stops[i][0]) { const [a, A1] = stops[i - 1], [b, B1] = stops[i], t = (l - a) / (b - a); return A1.map((v, k) => v + (B1[k] - v) * t); }
+    return stops[4][1];
+  }
+  function flagTex(id) {
+    if (flagCache[id]) return flagCache[id];
+    return (flagCache[id] = fetch('flags/' + id + '.svg').then((r) => r.text()).then((t) => new Promise((res) => {
+      const svg = t.replace('<svg ', '<svg width="960" height="720" preserveAspectRatio="xMidYMid slice" ');
+      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = 960; c.height = 720;
+        const x = c.getContext('2d'); x.drawImage(img, 0, 0, 960, 720);
+        const d = x.getImageData(0, 0, 960, 720), p = d.data;
+        for (let i = 0; i < p.length; i += 4) { const col = ramp((0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]) / 255); p[i] = col[0]; p[i + 1] = col[1]; p[i + 2] = col[2]; }
+        x.putImageData(d, 0, 0); URL.revokeObjectURL(url); res(c);
+      };
+      img.onerror = () => res(null); img.src = url;
+    })).catch(() => null));
   }
 
   /* ============ the country sheet ============ */
@@ -267,7 +275,8 @@
     st.sheetOpen = true; document.body.classList.add('sheet-open');
     const b = c.bbox, lat = (b[1] + b[3]) / 2, lon = (b[0] + b[2]) / 2;
     const span = Math.max(b[3] - b[1], (b[2] - b[0]) * Math.cos(lat * Math.PI / 180));
-    G.setSelected(id);
+    G.setSelected(id); G.setFlag(null); flagTex(id).then((t) => { if (sh.id === id) G.setFlag(t); });
+    $('#switch').value = id;
     G.focus({ layout: 'sheet', lon, lat, span: span * 1.1, glass: 1, ring: 0 });
     G.lockLocalHour(sh.hour, lon);
     sheetCtx = { lat, lon, month: 6, smoke: 0, hourNow: sh.hour };
@@ -282,9 +291,9 @@
     if (!st.sheetOpen) return;
     stopDay(); st.sheetOpen = false; document.body.classList.remove('sheet-open');
     sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true');
-    G.setSelected(null); G.unlock(); sheetCtx = null;
+    G.setSelected(null); G.setFlag(null); G.unlock(); sheetCtx = null;
     G.focus(FOCI.explore); focusId = 'explore';
-    document.body.classList.add('show-tray'); placeTitle(); onScroll();
+    placeTitle(); onScroll();
     try { history.replaceState(null, '', '#explore'); } catch (e) { /* ignore */ }
   }
   $('#sheet-back').addEventListener('click', closePlace);
@@ -297,7 +306,14 @@
     sh.hour = ((h % 24) + 24) % 24;
     G.lockLocalHour(sh.hour, sh.c.bbox[0] / 2 + sh.c.bbox[2] / 2);
     $$('.hr', cardsEl).forEach((b) => b.classList.toggle('on', +b.dataset.h === Math.floor(sh.hour)));
+    const tod = $('#tod'); if (tod) { tod.value = sh.hour.toFixed(2); $('#tod-out').textContent = fmt12(sh.hour); }
     if (fromUser) stopDay();
+  }
+  const fmt12 = (h) => { const hh = Math.floor(h) % 24, mm = Math.floor((h % 1) * 60); return `${hh % 12 || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`; };
+  function paintTrack() {
+    if (!sheetCtx || !$('#tod')) return;
+    const stops = []; for (let h = 0; h <= 24; h++) stops.push(`${SKY.css(SKY.sky(sheetCtx.lat, sheetCtx.month, h % 24, sheetCtx.smoke).mid)} ${(h / 24 * 100).toFixed(1)}%`);
+    $('#tod').style.setProperty('--trackbg', `linear-gradient(90deg, ${stops.join(',')})`);
   }
   let dayRaf = 0;
   function playDay() {
@@ -319,7 +335,7 @@
     $('#m-prev').disabled = i === 0; $('#m-next').disabled = i === s.months.length - 1;
     G.setMonth(mo);
     sheetCtx.month = mo; sheetCtx.smoke = clamp(v / (s.summary.peak_value || 1), 0, 1);
-    emberLevel = sheetCtx.smoke;
+    emberLevel = sheetCtx.smoke; paintTrack();
     $$('.c-cell.sel', cardsEl).forEach((e) => e.classList.remove('sel'));
     const cell = $(`.c-cell[data-i="${i}"]`, cardsEl); if (cell) cell.classList.add('sel');
     refreshPasses(); drawMark();
@@ -344,6 +360,7 @@
     cardsEl.innerHTML = `
 <section class="gcard span2"><h3 class="gh">${ICON.clock} When in the day<span class="gr" id="pass-sum"></span></h3>
   <div class="dayrow"><p id="day-line"></p><button type="button" id="day-play">▶ Play the day</button></div>
+  <div class="tod"><div class="tod-top"><span class="tod-lab">Local time · drag to change</span><output class="tod-out" id="tod-out" for="tod"></output></div><div class="tod-marks" id="tod-marks"></div><input type="range" id="tod" min="0" max="23.99" step="0.02" value="12" aria-label="Local time of day"><div class="tod-ticks" aria-hidden="true"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
   <div class="hours" id="hours">${hours}</div>
   <p class="note">The bars are a schematic daily fire rhythm. The markers show when each satellite passed this country in the selected month. Tap an hour to see the sky and the night side at that time.</p></section>
 <section class="gcard"><h3 class="gh">${ICON.chart} Year by year</h3><div class="yrows" id="yrows">${yrows}</div><p class="note">Each bar spans the lowest to highest month. The dot is the average month.</p></section>
@@ -364,6 +381,7 @@
 <section class="gcard span2"><h3 class="gh">${ICON.down} Download</h3><div class="dl"><button type="button" class="btn" id="dl-csv">Monthly table (CSV)</button><a class="btn ghost" href="https://firms.modaps.eosdis.nasa.gov/download/" target="_blank" rel="noopener">NASA FIRMS raw archive ↗</a><button type="button" class="btn ghost" id="dl-link">Copy link to this view</button></div>
   <p class="note">One row per month: harmonized count with 95% band, anomaly score, raw counts per satellite, uncorrected and drift-corrected MODIS, pass times and fire power. Hotspot-level files come from the team's server app.</p><p class="toast" id="toast" role="status" aria-live="polite"></p></section>`;
     // wire
+    $('#tod').addEventListener('input', () => setHour(parseFloat($('#tod').value), true));
     $('#hours').addEventListener('click', (e) => { const b = e.target.closest('.hr'); if (b) setHour(+b.dataset.h + 0.5, true); });
     $('#day-play').addEventListener('click', () => (sh.playing ? stopDay() : playDay()));
     $('#yrows').addEventListener('click', (e) => { const b = e.target.closest('.yr'); if (!b) return; const y = +b.dataset.y; let best = -1, bi = -1; s.months.forEach((m, i) => { if (Math.floor(m / 100) === y && s.harm[i] > best) { best = s.harm[i]; bi = i; } }); if (bi >= 0) selectIdx(bi); });
@@ -381,6 +399,7 @@
     $$('.hs', cardsEl).forEach((e) => (e.innerHTML = ''));
     const put = (h, cls, txt) => { if (h == null) return; const el = $(`.hr[data-h="${Math.floor(h) % 24}"] .hs`, cardsEl); if (el) el.insertAdjacentHTML('beforeend', `<b class="${cls}">${txt}</b>`); };
     put(t, 't', 'T'); put(a, 'a', 'A'); put(v, 'v', 'V');
+    const tm = $('#tod-marks'); if (tm) tm.innerHTML = [[t, 't', 'Terra'], [a, 'a', 'Aqua'], [v, 'v', 'VIIRS']].filter((x) => x[0] != null).map((x) => `<b class="${x[1]}" style="left:${(x[0] / 24 * 100).toFixed(1)}%">${x[2]}</b>`).join('');
     const bits = [];
     if (t != null) bits.push(`<b style="color:#ffd27a">Terra ${S.fmtH(t)}</b>`);
     if (a != null) bits.push(`<b style="color:#ff9d62">Aqua ${S.fmtH(a)}</b>`);
@@ -509,7 +528,7 @@
     if (!reduce) { const t0 = performance.now(); (function unmelt(now) { const t = clamp((now - t0) / 2200, 0, 1); baseYear = 2050 - 67 * (1 - Math.pow(1 - t, 3)); placeTitle(); if (t < 1) requestAnimationFrame(unmelt); })(t0); }
     if (!d) { $('.explore-hint').textContent = 'The data files did not load. Open this page over http(s), not as a local file.'; return; }
     initEvidence();
-    await buildTray();
+    await buildPlaces();
     const m = /place=([A-Za-z_]+)(?:&m=(\d{6}))?/.exec(location.hash);
     if (m && DATA.byId[m[1]]) { const s = await DATA.loadSeries(m[1]); const idx = m[2] ? s.months.indexOf(+m[2]) : -1; openPlace(m[1], idx >= 0 ? { idx } : {}); }
   });
